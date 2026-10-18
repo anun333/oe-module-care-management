@@ -1,0 +1,32 @@
+{#
+The Care Management card on the patient dashboard.
+
+@package   OpenEMR
+@author    anun333 <anun333@posteo.net>
+@copyright Copyright (c) 2026 anun333 <anun333@posteo.net>
+@license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
+#}
+
+{% extends "patient/card/card_base.html.twig" %}
+
+{% block content %}
+<div class="text pl-1">
+    {% if rows is empty %}
+        <p class="text-muted mb-1">{{ "Not enrolled in care management."|xlt }}</p>
+    {% else %}
+        <p class="small text-muted mb-1">{{ month|text }}</p>
+        {% for row in rows %}
+            <p class="mb-1">
+                <strong>{{ row.service|text }}</strong>:
+                <span class="{{ row.met ? 'text-success' : '' }}">{{ row.minutes|text }} / {{ row.threshold|text }} {{ "minutes"|xlt }}</span>
+            </p>
+            {% for blocker in row.blockers %}
+                <p class="small text-danger mb-1">{{ blocker|text }}</p>
+            {% endfor %}
+        {% endfor %}
+    {% endif %}
+    {% if url %}
+        <a class="btn btn-sm btn-outline-primary" href="{{ url|attr }}" onclick="top.restoreSession()">{{ "Enroll, consent and log time"|xlt }}</a>
+    {% endif %}
+</div>
+{% endblock %}

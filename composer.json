@@ -1,0 +1,49 @@
+{
+    "name": "anun333/oe-module-care-management",
+    "description": "Care management for OpenEMR: enrollment with CMS's consent elements, monthly time logged by clinical staff and the billing practitioner, and each month's list of who meets which chronic care management (CCM), principal care management (PCM) or behavioral health integration (BHI) code",
+    "type": "openemr-module",
+    "license": "GPL-3.0-or-later",
+    "keywords": [
+        "openemr",
+        "openemr-module",
+        "care-management",
+        "chronic-care-management",
+        "ccm",
+        "medicare"
+    ],
+    "authors": [
+        {
+            "name": "anun333",
+            "email": "anun333@posteo.net"
+        }
+    ],
+    "require": {
+        "php": ">=8.3",
+        "openemr/oe-module-installer-plugin": "^0.1.5"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "OpenHealthcare\\CareManagement\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "OpenHealthcare\\CareManagement\\Tests\\": "tests/"
+        },
+        "files": [
+            "tests/stubs.php"
+        ]
+    },
+    "config": {
+        "allow-plugins": {
+            "openemr/oe-module-installer-plugin": true
+        }
+    },
+    "support": {
+        "issues": "https://github.com/anun333/oe-module-care-management/issues",
+        "source": "https://github.com/anun333/oe-module-care-management"
+    }
+}
