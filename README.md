@@ -112,6 +112,18 @@ Read 2026-10-18:
 - The CY 2025 and CY 2026 Physician Fee Schedule final rules (89 FR 97710, 90 FR 49266).
 - Medicare Benefit Policy Manual chapter 13, §230, and Claims Processing Manual chapter 9, §60.8, for RHCs and FQHCs.
 
+## Other modules for OpenEMR
+
+From the same project. Each installs with `composer require anun333/<module>` and is then enabled in Modules › Manage Modules.
+
+| Module | What it does |
+|---|---|
+| [Clinic Forms](https://github.com/anun333/oe-module-clinic-forms) | Printable clinic paperwork: consents, privacy notices, referral letters and validated screening questionnaires, with the clinic's own details, in English and Spanish |
+| [UDS Report](https://github.com/anun333/oe-module-uds-report) | HRSA's Uniform Data System report for health centers: the patient, visit and diagnosis tables, eCQM readiness, a Table 9D worksheet and grant evidence |
+| [Staff Worklist](https://github.com/anun333/oe-module-staff-worklist) | One queue of outstanding staff work: unsigned results, orders with no result, referrals with no reply, screening and claims follow-up |
+| [Sliding Fee Discount](https://github.com/anun333/oe-module-sliding-fee) | HRSA's sliding fee discount program: the schedule checked against Chapter 9, income assessments, and the discount applied |
+| [Migration](https://github.com/anun333/oe-module-migration) | Records from another EHR, read from the FHIR export certified EHRs offer, checked before import and safe to rerun |
+
 ## License
 
 GPL-3.0-or-later. See [LICENSE](LICENSE).
