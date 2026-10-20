@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0 (2026-10-20)
+
+- **Billed: what was billed, against what was met.** The month list and its CSV compare the care management codes on each patient's fee sheets, for encounters dated in the month, with the codes the time logged meets. Routes are alternatives, so what was billed is held to the closest one. A month is:
+  - **billed as met**;
+  - **billed beyond the time logged**, with the extra codes or units named;
+  - **billed, though something blocks billing**;
+  - **met, not billed** once the month is over, or **not billed yet** while it runs.
+
+  It only reads `billing` and `form_encounter`; it bills nothing. The column and the CSV need `acct/bill`, as the CSV always did.
+- `tools/footprint.php` answers a web request with a 404: Composer installs the package under OpenEMR's web root.
+
 ## 0.2.0 (2026-10-19)
 
 - **Complex CCM (99487, 99489).** In a month the billing practitioner records their moderate or high complexity decision-making, the same time as 99490 meets 99487 at 60 minutes and 99489 for each further 30. The practitioner's time counts when not used for 99491.

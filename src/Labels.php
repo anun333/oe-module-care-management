@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 namespace OpenHealthcare\CareManagement;
 
+use OpenHealthcare\CareManagement\Domain\BillingCheck;
 use OpenHealthcare\CareManagement\Domain\MonthRules;
 use OpenHealthcare\CareManagement\Domain\Service;
 
@@ -46,6 +47,20 @@ final class Labels
             Service::APCM_CODE => xl('APCM, no time requirement'),
             Service::ADD_ON => xl('APCM add-on, no time requirement'),
             default => $route,
+        };
+    }
+
+    /** What the billing check found, for the month list and its CSV. */
+    public static function billing(string $status): string
+    {
+        return match ($status) {
+            BillingCheck::BILLED => xl('Billed as met'),
+            BillingCheck::BEYOND => xl('Billed beyond the time logged'),
+            BillingCheck::BLOCKED => xl('Billed, though something blocks billing'),
+            BillingCheck::NOT_BILLED => xl('Met, not billed'),
+            BillingCheck::NOT_BILLED_YET => xl('Met, not billed yet'),
+            BillingCheck::NOTHING => '',
+            default => $status,
         };
     }
 

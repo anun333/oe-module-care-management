@@ -86,6 +86,32 @@ final class Service
         };
     }
 
+    /**
+     * Every code an enrollment in the service can meet, for matching what was billed: each route's
+     * base and add-on codes, complex CCM's, CoCM's by month of the episode, APCM's by conditions, and
+     * the APCM add-on a CoCM or BHI enrollment can carry. No code belongs to two services.
+     *
+     * @return list<string>
+     */
+    public static function codes(string $service): array
+    {
+        $codes = [];
+        foreach (self::routes($service) as $route) {
+            $codes[] = $route['base'];
+            if ($route['addOn'] !== null) {
+                $codes[] = $route['addOn'];
+            }
+        }
+        $more = match ($service) {
+            self::CCM => [self::COMPLEX_CCM['base'], self::COMPLEX_CCM['addOn']],
+            self::BHI => ['G0570'],
+            self::COCM => [self::COCM_FIRST_MONTH['base'], self::COCM_LATER_MONTH['base'], self::COCM_ADD_ON['code'], self::COCM_SHORT['code'], 'G0568', 'G0569'],
+            self::APCM => [self::apcmCode(1, false), self::apcmCode(2, false), self::apcmCode(2, true)],
+            default => [],
+        };
+        return array_values(array_unique([...$codes, ...$more]));
+    }
+
     /** The APCM code for a patient: by the chronic conditions managed, and whether they are a Qualified Medicare Beneficiary. */
     public static function apcmCode(int $conditions, bool $qmb): string
     {

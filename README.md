@@ -5,15 +5,20 @@ Monthly care management for OpenEMR: enroll a patient with the consent CMS requi
 - principal care management (PCM);
 - behavioral health integration (BHI).
 
-It bills nothing: staff add the codes on a fee sheet, as for any other service.
+It bills nothing: staff add the codes on a fee sheet, as for any other service. From 0.3.0 it checks what they billed against the time logged.
 
-> **Status: 0.2.0, a pre-release.** Tested on OpenEMR 8.4.1 with synthetic data only. The codes and rules are as read from CMS's documents on 2026-10-18; check them with your billing staff and payer before billing.
+> **Status: 0.3.0, a pre-release.** Tested on OpenEMR 8.4.1 with synthetic data only. The codes and rules are as read from CMS's documents on 2026-10-18; check them with your billing staff and payer before billing.
 
 What installing it changes in your database, what it reads and writes, and what it hooks into are listed in [FOOTPRINT.md](FOOTPRINT.md), generated from the source.
 
 ## What it does
 
 - **Care Management** (main menu): every enrollment active in a month, with the minutes logged, the codes they meet, and what blocks billing, with a CSV for billing staff.
+- **Billed** (on the month list and in the CSV, for those who can see billing): the care management codes on the patient's fee sheets for encounters that month, against the codes the time met. Each month is one of:
+  - **billed as met:** within one route's codes and units;
+  - **billed beyond the time logged:** more codes or units than any route met, or codes nothing met, with the extra named;
+  - **billed, though something blocks billing:** consent, conditions and the other blockers below;
+  - **met, not billed:** the month is over, its codes are met with nothing blocking, and no fee sheet has them. While the month runs, "not billed yet".
 - **The patient's page** (from the dashboard card):
   - enroll in a service, with the billing practitioner and the conditions managed (from the active problem list);
   - record consent, with the four things the patient must be told, and for BHI and CoCM their permission to consult specialists;
@@ -68,7 +73,7 @@ RHCs and FQHCs bill these individual codes. CMS ended G0511 (billing was allowed
 | Page | Check | Same as |
 |---|---|---|
 | Month list and menu entry | `patients/med` | the Staff Worklist |
-| The month list's CSV | `acct/bill` | OpenEMR's billing pages |
+| The month list's CSV, and its Billed column | `acct/bill` | OpenEMR's billing pages |
 | The patient's page (enroll, consent, log time) | `patients/med` write | the Staff Worklist's actions |
 | Dashboard card | `patients/med` | the module's pages |
 
@@ -76,7 +81,7 @@ Every view and every change is written to OpenEMR's audit log. Time entries are 
 
 ## Not done yet
 
-- **Creating the month's encounter and fee sheet lines.** It writes billing, so it waits until the month list has been used.
+- **Creating the month's encounter and fee sheet lines.** It writes billing, so it waits until the month list has been used. Until then, the Billed check finds the months nobody billed.
 - **Checking for TCM, e-visits and the other codes APCM excludes,** which the module doesn't track.
 - **Checking the care plan itself.** CMS requires an electronic care plan; OpenEMR's Care Plan form is where it lives.
 
@@ -98,6 +103,7 @@ Tested with synthetic data on OpenEMR 8.4.1 (Docker image `openemr/openemr:8.4.1
 - stops an enrollment;
 - checks that time logged as the practitioner's by someone else becomes staff time;
 - produces the month list, its CSV and the card;
+- plants fee-sheet lines on synthetic encounters and finds each billing check: billed as met (CCM), billed beyond the time (BHI billed twice), met and not billed yet (October), and met and not billed (September);
 - removes entries;
 - removes everything.
 

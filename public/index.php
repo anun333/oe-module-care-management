@@ -24,10 +24,12 @@ use OpenEMR\Common\Session\SessionWrapperFactory;
 use OpenEMR\Core\Header;
 use OpenEMR\Core\OEGlobalsBag;
 use OpenHealthcare\CareManagement\Bootstrap;
+use OpenHealthcare\CareManagement\Domain\BillingCheck;
 use OpenHealthcare\CareManagement\Domain\Month;
 use OpenHealthcare\CareManagement\Domain\MonthRules;
 use OpenHealthcare\CareManagement\Domain\Service;
 use OpenHealthcare\CareManagement\Labels;
+use OpenHealthcare\CareManagement\Repository\BillingRepository;
 use OpenHealthcare\CareManagement\Repository\EnrollmentRepository;
 use OpenHealthcare\CareManagement\Repository\MonthRepository;
 use OpenHealthcare\CareManagement\Repository\TimeRepository;
@@ -39,7 +41,9 @@ if (!AclMain::aclCheckCore('patients', 'med')) {
 $session = SessionWrapperFactory::getInstance()->getActiveSession();
 $month = Month::parse((string)($_GET['month'] ?? '')) ?? Month::of(new DateTimeImmutable('today'));
 $csv = ($_GET['format'] ?? '') === 'csv';
-if ($csv && !AclMain::aclCheckCore('acct', 'bill')) {
+// What was billed is billing information: shown, and in the CSV, to those who may see billing, as the CSV always was.
+$seesBilling = AclMain::aclCheckCore('acct', 'bill');
+if ($csv && !$seesBilling) {
     AccessDeniedHelper::denyWithTemplate('ACL check failed for acct/bill: Care Management billing list', xl('Care Management'));
 }
 $repo = new EnrollmentRepository();
@@ -61,11 +65,17 @@ foreach ($active as $e) {
 $ids = array_map(static fn($e): int => $e->id, $active);
 $complex = (new MonthRepository())->complex($ids, $month);
 $earlier = (new TimeRepository())->hadTimeBefore($ids, $month);
+$billed = $seesBilling ? (new BillingRepository())->billedIn($month, $pids) : [];
+$monthOver = $month->last() < new DateTimeImmutable('today');
 $lines = [];
 foreach ($active as $e) {
     $s = MonthRules::summarize($e, $entries, $byPatient[$e->pid], $month, $complex[$e->id] ?? false, $earlier[$e->id] ?? false);
-    $lines[] = ['e' => $e, 's' => $s, 'billable' => $s['blockers'] === [] && array_filter($s['routes']) !== []];
+    $codesBilled = BillingCheck::forService($billed[$e->pid] ?? [], $e->service);
+    $lines[] = ['e' => $e, 's' => $s, 'billable' => $s['blockers'] === [] && array_filter($s['routes']) !== [],
+        'billed' => $codesBilled, 'check' => BillingCheck::check($s['routes'], $s['blockers'], $codesBilled, $monthOver)];
 }
+// "99490 + 99439 x2" for code => units.
+$units = static fn(array $codes): string => Labels::codes(array_map(static fn(string $c, int $u): array => ['code' => $c, 'units' => $u], array_keys($codes), $codes));
 // The routes past staff and practitioner (complex CCM, APCM, an APCM add-on), as one text.
 $others = static fn(array $s): string => implode('; ', array_map(
     static fn(string $route): string => Labels::route($route, '') . ': ' . Labels::codes($s['routes'][$route]),
@@ -82,13 +92,14 @@ if ($csv) {
     if ($out === false) {
         exit;
     }
-    fputcsv($out, ['Patient', 'ID', 'Service', 'Billing practitioner', 'Staff minutes', 'Practitioner minutes', 'Staff route codes', 'Practitioner route codes', 'Other codes', 'Billable', 'Blocked by'], ',', '"', '');
+    fputcsv($out, ['Patient', 'ID', 'Service', 'Billing practitioner', 'Staff minutes', 'Practitioner minutes', 'Staff route codes', 'Practitioner route codes', 'Other codes', 'Billable', 'Blocked by', 'Billed', 'Billing check'], ',', '"', '');
     foreach ($lines as $l) {
         $e = $l['e'];
         $s = $l['s'];
         fputcsv($out, [$name($e->pid), (string)($patients[$e->pid]['pubpid'] ?? ''), strtoupper($e->service), $practitioners[$e->practitionerId] ?? '',
             $s['staff'], $s['practitioner'], Labels::codes($s['routes'][Service::STAFF] ?? []), Labels::codes($s['routes'][Service::PRACTITIONER] ?? []),
-            $others($s), $l['billable'] ? 'yes' : 'no', implode('; ', array_map(Labels::blocker(...), $s['blockers']))], ',', '"', '');
+            $others($s), $l['billable'] ? 'yes' : 'no', implode('; ', array_map(Labels::blocker(...), $s['blockers'])),
+            $units($l['billed']), trim(Labels::billing($l['check']['status']) . ($l['check']['beyond'] !== [] ? ': ' . $units($l['check']['beyond']) : ''))], ',', '"', '');
     }
     fclose($out);
     exit;
@@ -104,7 +115,8 @@ $moduleUrl = OEGlobalsBag::getInstance()->getWebRoot() . Bootstrap::MODULE_INSTA
 <body class="body_top">
 <div class="container-fluid py-3">
     <h1 class="h4"><?php echo xlt('Care Management'); ?>: <?php echo text($month->key()); ?></h1>
-    <p class="small text-muted"><?php echo xlt('Minutes are counted per calendar month and never carry over. Each add-on needs its full time, and CoCM its full minutes. APCM and its add-ons have no time requirement. Health centers bill these codes themselves, paid outside the PPS rate. This list bills nothing: add the codes on a fee sheet.'); ?></p>
+    <p class="small text-muted"><?php echo xlt('Minutes are counted per calendar month and never carry over. Each add-on needs its full time, and CoCM its full minutes. APCM and its add-ons have no time requirement. Health centers bill these codes themselves, paid outside the PPS rate. This list bills nothing: add the codes on a fee sheet.'); ?>
+        <?php if ($seesBilling) { ?><?php echo xlt('Billed compares the time logged with the care management codes on the patient\'s fee sheets for encounters this month.'); ?><?php } ?></p>
     <form method="get" class="form-inline mb-3">
         <label class="mr-2" for="month"><?php echo xlt('Month'); ?></label>
         <input type="month" class="form-control form-control-sm mr-2" id="month" name="month" value="<?php echo attr($month->key()); ?>">
@@ -115,7 +127,8 @@ $moduleUrl = OEGlobalsBag::getInstance()->getWebRoot() . Bootstrap::MODULE_INSTA
     </form>
     <table class="table table-sm">
         <thead><tr><th><?php echo xlt('Patient'); ?></th><th><?php echo xlt('Service'); ?></th><th><?php echo xlt('Billing practitioner'); ?></th>
-            <th class="text-right"><?php echo xlt('Staff minutes'); ?></th><th class="text-right"><?php echo xlt('Practitioner minutes'); ?></th><th><?php echo xlt('Codes met'); ?></th><th><?php echo xlt('Blocked by'); ?></th></tr></thead>
+            <th class="text-right"><?php echo xlt('Staff minutes'); ?></th><th class="text-right"><?php echo xlt('Practitioner minutes'); ?></th><th><?php echo xlt('Codes met'); ?></th><th><?php echo xlt('Blocked by'); ?></th>
+            <?php if ($seesBilling) { ?><th><?php echo xlt('Billed'); ?></th><?php } ?></tr></thead>
         <tbody>
         <?php foreach ($lines as $l) {
             $e = $l['e'];
@@ -132,9 +145,21 @@ $moduleUrl = OEGlobalsBag::getInstance()->getWebRoot() . Bootstrap::MODULE_INSTA
                     <?php if ($others($s) !== '') { ?><br><span class="small"><?php echo xlt('or'); ?> <?php echo text($others($s)); ?></span><?php } ?>
                 </td>
                 <td class="small text-danger"><?php echo text(implode('; ', array_map(Labels::blocker(...), $s['blockers']))); ?></td>
+                <?php if ($seesBilling) {
+                    $status = $l['check']['status'];
+                    $tone = match ($status) {
+                        BillingCheck::BILLED => 'text-success',
+                        BillingCheck::NOT_BILLED, BillingCheck::BEYOND, BillingCheck::BLOCKED => 'text-danger',
+                        default => 'text-muted',
+                    }; ?>
+                    <td class="small <?php echo attr($tone); ?>" data-billing="<?php echo attr($status); ?>" data-billed="<?php echo attr($units($l['billed'])); ?>">
+                        <?php echo text($units($l['billed'])); ?><?php if ($l['billed'] !== [] && $status !== BillingCheck::NOTHING) { ?><br><?php } ?>
+                        <?php echo text(Labels::billing($status)); ?><?php if ($l['check']['beyond'] !== []) { ?>: <?php echo text($units($l['check']['beyond'])); ?><?php } ?>
+                    </td>
+                <?php } ?>
             </tr>
         <?php } ?>
-        <?php if ($lines === []) { ?><tr><td colspan="7" class="text-muted"><?php echo xlt('No enrollments active this month.'); ?></td></tr><?php } ?>
+        <?php if ($lines === []) { ?><tr><td colspan="<?php echo $seesBilling ? '8' : '7'; ?>" class="text-muted"><?php echo xlt('No enrollments active this month.'); ?></td></tr><?php } ?>
         </tbody>
     </table>
 </div>
