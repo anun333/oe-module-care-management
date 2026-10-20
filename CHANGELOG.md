@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1 (2026-10-20)
+
+- **Fixed:** the month list's note about the Billed column read "the patient`s fee sheets". OpenEMR's `xl()` turns an apostrophe into a backtick, so the note is reworded, and a test now fails on any translated string with an apostrophe or quote mark.
+
 ## 0.3.0 (2026-10-20)
 
 - **Billed: what was billed, against what was met.** The month list and its CSV compare the care management codes on each patient's fee sheets, for encounters dated in the month, with the codes the time logged meets. Routes are alternatives, so what was billed is held to the closest one. A month is:
