@@ -18,7 +18,11 @@ The Care Management card on the patient dashboard.
         {% for row in rows %}
             <p class="mb-1">
                 <strong>{{ row.service|text }}</strong>:
-                <span class="{{ row.met ? 'text-success' : '' }}">{{ row.minutes|text }} / {{ row.threshold|text }} {{ "minutes"|xlt }}</span>
+                {% if row.threshold is null %}
+                    <span class="text-success">{{ row.codes|text }}</span> <span class="small text-muted">{{ "no time requirement"|xlt }}</span>
+                {% else %}
+                    <span class="{{ row.met ? 'text-success' : '' }}">{{ row.minutes|text }} / {{ row.threshold|text }} {{ "minutes"|xlt }}</span>
+                {% endif %}
             </p>
             {% for blocker in row.blockers %}
                 <p class="small text-danger mb-1">{{ blocker|text }}</p>

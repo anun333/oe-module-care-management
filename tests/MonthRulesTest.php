@@ -138,6 +138,85 @@ final class MonthRulesTest extends TestCase
         return Month::of(new \DateTimeImmutable('2026-10-18'));
     }
 
+    public function testComplexCcmNeedsTheDecisionMakingAndSixtyMinutes(): void
+    {
+        $e = self::enrollment(Service::CCM);
+        $codes = static fn(int $staff, int $practitioner = 0, bool $complex = true): ?array => MonthRules::summarize($e,
+            array_values(array_filter([$staff > 0 ? self::entry(1, '2026-10-05', $staff, Service::STAFF) : null,
+                $practitioner > 0 ? self::entry(1, '2026-10-06', $practitioner, Service::PRACTITIONER) : null])),
+            [], self::october(), $complex)['routes'][Service::COMPLEX] ?? null;
+        $this->assertNull($codes(90, 0, false), 'without the decision-making there is no complex route');
+        $this->assertSame([], $codes(59));
+        $this->assertSame([['code' => '99487', 'units' => 1]], $codes(60));
+        $this->assertSame([['code' => '99487', 'units' => 1]], $codes(89));
+        $this->assertSame([['code' => '99487', 'units' => 1], ['code' => '99489', 'units' => 1]], $codes(90));
+        $this->assertSame([['code' => '99487', 'units' => 1]], $codes(40, 20), 'the practitioner\'s time counts toward it');
+    }
+
+    public function testCollaborativeCareByMonthOfTheEpisode(): void
+    {
+        $e = self::enrollment(Service::COCM, conditions: ['F32.1']);
+        $staff = static fn(int $minutes, bool $later = false, int $practitioner = 0): array => MonthRules::summarize($e,
+            array_values(array_filter([self::entry(1, '2026-10-05', $minutes, Service::STAFF),
+                $practitioner > 0 ? self::entry(1, '2026-10-06', $practitioner, Service::PRACTITIONER) : null])),
+            [], self::october(), false, $later)['routes'][Service::STAFF];
+        $this->assertSame([], $staff(29));
+        $this->assertSame([['code' => 'G2214', 'units' => 1]], $staff(30), 'the first 30 minutes when 99492 isn\'t met');
+        $this->assertSame([['code' => 'G2214', 'units' => 1]], $staff(69));
+        $this->assertSame([['code' => '99492', 'units' => 1]], $staff(70));
+        $this->assertSame([['code' => '99492', 'units' => 1], ['code' => '99494', 'units' => 1]], $staff(100));
+        $this->assertSame([['code' => 'G2214', 'units' => 1]], $staff(59, true));
+        $this->assertSame([['code' => '99493', 'units' => 1]], $staff(60, true), 'a later month of the episode');
+        $this->assertSame([['code' => '99493', 'units' => 1], ['code' => '99494', 'units' => 2]], $staff(120, true));
+        $this->assertSame([['code' => 'G2214', 'units' => 1]], $staff(40, false, 40), 'the practitioner\'s own time is not the care manager\'s');
+        $this->assertSame(70, MonthRules::summarize($e, [], [], self::october())['threshold']);
+        $this->assertSame(60, MonthRules::summarize($e, [], [], self::october(), false, true)['threshold']);
+    }
+
+    public function testApcmByConditionsAndQmbWithNoTime(): void
+    {
+        $code = static fn(array $conditions, bool $qmb = false): string => MonthRules::summarize(self::enrollment(Service::APCM, conditions: $conditions, qmb: $qmb),
+            [], [], self::october())['routes'][Service::APCM_CODE][0]['code'];
+        $this->assertSame('G0556', $code([]));
+        $this->assertSame('G0556', $code(['I10']));
+        $this->assertSame('G0557', $code(['I10', 'E11.9']));
+        $this->assertSame('G0558', $code(['I10', 'E11.9'], true));
+        $this->assertSame('G0556', $code(['I10'], true), 'G0558 needs two or more conditions too');
+        $s = MonthRules::summarize(self::enrollment(Service::APCM), [], [], self::october());
+        $this->assertNull($s['threshold']);
+        $this->assertSame([], $s['blockers']);
+    }
+
+    public function testApcmAddOnsForTheSamePractitioner(): void
+    {
+        $apcm = self::enrollment(Service::APCM, id: 1);
+        $cocm = self::enrollment(Service::COCM, id: 2, conditions: ['F32.1']);
+        $bhi = self::enrollment(Service::BHI, id: 3, conditions: ['F41.1']);
+        $addOn = static fn(Enrollment $e, array $entries, array $others, bool $later = false): ?array
+            => MonthRules::summarize($e, $entries, $others, self::october(), false, $later)['routes'][Service::ADD_ON] ?? null;
+        $this->assertSame([['code' => 'G0568', 'units' => 1]], $addOn($cocm, [self::entry(2, '2026-10-05', 10, Service::STAFF)], [$apcm, $cocm]), 'no minutes needed');
+        $this->assertSame([['code' => 'G0569', 'units' => 1]], $addOn($cocm, [self::entry(2, '2026-10-05', 10, Service::STAFF)], [$apcm, $cocm], true));
+        $this->assertSame([['code' => 'G0570', 'units' => 1]], $addOn($bhi, [self::entry(3, '2026-10-05', 5, Service::STAFF)], [$apcm, $bhi]));
+        $this->assertNull($addOn($cocm, [], [$apcm, $cocm]), 'nothing recorded this month, no add-on');
+        $other = self::enrollment(Service::APCM, id: 1, practitionerId: 8);
+        $this->assertNull($addOn($cocm, [self::entry(2, '2026-10-05', 10, Service::STAFF)], [$other, $cocm]), 'only for the practitioner billing APCM');
+    }
+
+    public function testCocmWithBhiAndApcmWithCcmBlock(): void
+    {
+        $cocm = self::enrollment(Service::COCM, id: 1, conditions: ['F32.1']);
+        $bhi = self::enrollment(Service::BHI, id: 2, practitionerId: 9, conditions: ['F41.1']);
+        $this->assertContains(MonthRules::COCM_AND_BHI, MonthRules::summarize($cocm, [], [$cocm, $bhi], self::october())['blockers']);
+        $this->assertContains(MonthRules::COCM_AND_BHI, MonthRules::summarize($bhi, [], [$cocm, $bhi], self::october())['blockers'], 'whoever bills them');
+        $apcm = self::enrollment(Service::APCM, id: 3);
+        $ccm = self::enrollment(Service::CCM, id: 4);
+        $this->assertContains(MonthRules::APCM_AND_CCM_PCM, MonthRules::summarize($apcm, [], [$apcm, $ccm], self::october())['blockers']);
+        $this->assertContains(MonthRules::APCM_AND_CCM_PCM, MonthRules::summarize($ccm, [], [$apcm, $ccm], self::october())['blockers']);
+        $ccmElsewhere = self::enrollment(Service::CCM, id: 5, practitionerId: 8);
+        $this->assertNotContains(MonthRules::APCM_AND_CCM_PCM, MonthRules::summarize($ccmElsewhere, [], [$apcm, $ccmElsewhere], self::october())['blockers'],
+            'another practitioner may bill CCM');
+    }
+
     /** @param list<string>|null $conditions */
     private static function enrollment(
         string $service,
@@ -150,6 +229,7 @@ final class MonthRulesTest extends TestCase
         ?string $initiatingVisitOn = null,
         string $startedOn = '2026-09-01',
         ?string $stoppedOn = null,
+        bool $qmb = false,
     ): Enrollment {
         return new Enrollment(
             $id,
@@ -163,6 +243,7 @@ final class MonthRulesTest extends TestCase
             $initiatingVisitOn === null ? null : new \DateTimeImmutable($initiatingVisitOn),
             new \DateTimeImmutable($startedOn),
             $stoppedOn === null ? null : new \DateTimeImmutable($stoppedOn),
+            $qmb,
         );
     }
 

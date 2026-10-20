@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Care Management for one patient: enroll in CCM, PCM or BHI with the consent CMS
+ * Care Management for one patient: enroll in CCM, PCM, BHI, CoCM or APCM with the consent CMS
  * requires, log time, and see this month's minutes, the codes they meet and what
  * blocks billing.
  *
@@ -30,6 +30,7 @@ use OpenHealthcare\CareManagement\Domain\MonthRules;
 use OpenHealthcare\CareManagement\Domain\Service;
 use OpenHealthcare\CareManagement\Labels;
 use OpenHealthcare\CareManagement\Repository\EnrollmentRepository;
+use OpenHealthcare\CareManagement\Repository\MonthRepository;
 use OpenHealthcare\CareManagement\Repository\TimeRepository;
 
 // Logging care is clinical documentation: the same check as the Staff Worklist's actions.
@@ -72,7 +73,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     foreach ($enrollments->forPatient($pid) as $e) {
         $mine[$e->id] = $e;
     }
-    $explained = !empty($_POST['told_available']) && !empty($_POST['told_cost']) && !empty($_POST['told_one']) && !empty($_POST['told_stop']);
+    // CMS's four for CCM, PCM and APCM; BHI and CoCM also need the patient's permission to consult
+    // specialists, a psychiatric consultant included (MLN909432).
+    $toldFour = !empty($_POST['told_available']) && !empty($_POST['told_cost']) && !empty($_POST['told_one']) && !empty($_POST['told_stop']);
+    $explained = static fn(string $service): bool => $toldFour && (!in_array($service, [Service::BHI, Service::COCM], true) || !empty($_POST['told_specialists']));
     $consentOn = $date($_POST['consent_on'] ?? null);
     $consentHow = in_array($_POST['consent_how'] ?? '', ['verbal', 'written'], true) ? (string)$_POST['consent_how'] : null;
     if ($action === 'enroll') {
@@ -88,8 +92,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             $errors[] = xl('Say whether the consent was written or verbal.');
         }
         if ($errors === []) {
-            $id = $enrollments->add($pid, $service, $practitioner, $conditions, $consentOn, $consentHow, $consentOn !== null && $explained,
-                $date($_POST['initiating_visit_on'] ?? null), (string)$started, trim((string)($_POST['note'] ?? '')), $userId);
+            $id = $enrollments->add($pid, $service, $practitioner, $conditions, $consentOn, $consentHow, $consentOn !== null && $explained($service),
+                $date($_POST['initiating_visit_on'] ?? null), (string)$started, trim((string)($_POST['note'] ?? '')), $userId, !empty($_POST['qmb']));
             $audit('patient-record-update', "enrollment $id ($service)");
             $done = xl('Enrolled.');
         }
@@ -98,9 +102,20 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             $errors[] = xl('Enter the consent date and whether it was written or verbal.');
         } else {
             $id = (int)$_POST['enrollment'];
-            $enrollments->recordConsent($id, $pid, $consentOn, $consentHow, $explained, $date($_POST['initiating_visit_on'] ?? null), $userId);
+            $enrollments->recordConsent($id, $pid, $consentOn, $consentHow, $explained($mine[$id]->service), $date($_POST['initiating_visit_on'] ?? null), $userId);
             $audit('patient-record-update', "consent for enrollment $id");
             $done = xl('Consent recorded.');
+        }
+    } elseif ($action === 'complex' && isset($mine[(int)($_POST['enrollment'] ?? 0)])) {
+        $e = $mine[(int)$_POST['enrollment']];
+        // Complex CCM's decision-making is the billing practitioner's own, so only they record it.
+        if ($e->service !== Service::CCM || $userId !== $e->practitionerId) {
+            $errors[] = xl('Only the billing practitioner can record their own decision-making.');
+        } else {
+            $on = !empty($_POST['complex_mdm']);
+            (new MonthRepository())->setComplex($e->id, $pid, $month, $on, $userId);
+            $audit('patient-record-update', 'enrollment ' . $e->id . ' complex decision-making ' . $month->key() . ($on ? ' recorded' : ' cleared'));
+            $done = $on ? xl('Recorded: moderate or high complexity decision-making this month.') : xl('Cleared.');
         }
     } elseif ($action === 'stop' && isset($mine[(int)($_POST['enrollment'] ?? 0)])) {
         $stopped = $date($_POST['stopped_on'] ?? null);
@@ -140,6 +155,9 @@ $audit('patient-record-select', 'viewed');
 $list = $enrollments->forPatient($pid);
 $details = $enrollments->details($pid);
 $entries = $times->inMonth($month, [$pid]);
+$ids = array_map(static fn($e): int => $e->id, $list);
+$complex = (new MonthRepository())->complex($ids, $month);
+$earlier = $times->hadTimeBefore($ids, $month);
 $moduleUrl = OEGlobalsBag::getInstance()->getWebRoot() . Bootstrap::MODULE_INSTALLATION_PATH . '/public/';
 $token = CsrfUtils::collectCsrfToken(session: $session);
 $consentFields = static function (string $k) {
@@ -150,11 +168,12 @@ $consentFields = static function (string $k) {
             <select class="form-control form-control-sm" name="consent_how"><option value=""></option><option value="verbal"><?php echo xlt('Verbal'); ?></option><option value="written"><?php echo xlt('Written'); ?></option></select></div>
         <div class="form-group col-md-3"><label><?php echo xlt('Initiating visit, if needed'); ?></label><input type="date" class="form-control form-control-sm" name="initiating_visit_on"></div>
     </div>
-    <p class="small mb-1"><?php echo xlt('The patient was told (CMS requires all four):'); ?></p>
+    <p class="small mb-1"><?php echo xlt('The patient was told (CMS requires the first four, and for BHI and CoCM the fifth too):'); ?></p>
     <div class="form-check"><input class="form-check-input" type="checkbox" name="told_available" value="1" id="ta<?php echo attr($k); ?>"><label class="form-check-label small" for="ta<?php echo attr($k); ?>"><?php echo xlt('that the service is available to them'); ?></label></div>
     <div class="form-check"><input class="form-check-input" type="checkbox" name="told_cost" value="1" id="tc<?php echo attr($k); ?>"><label class="form-check-label small" for="tc<?php echo attr($k); ?>"><?php echo xlt('that cost-sharing (coinsurance) applies'); ?></label></div>
     <div class="form-check"><input class="form-check-input" type="checkbox" name="told_one" value="1" id="to<?php echo attr($k); ?>"><label class="form-check-label small" for="to<?php echo attr($k); ?>"><?php echo xlt('that only one practitioner can furnish and bill it in a calendar month'); ?></label></div>
-    <div class="form-check mb-2"><input class="form-check-input" type="checkbox" name="told_stop" value="1" id="ts<?php echo attr($k); ?>"><label class="form-check-label small" for="ts<?php echo attr($k); ?>"><?php echo xlt('that they can stop at any time, effective at the end of the month'); ?></label></div>
+    <div class="form-check"><input class="form-check-input" type="checkbox" name="told_stop" value="1" id="ts<?php echo attr($k); ?>"><label class="form-check-label small" for="ts<?php echo attr($k); ?>"><?php echo xlt('that they can stop at any time, effective at the end of the month'); ?></label></div>
+    <div class="form-check mb-2"><input class="form-check-input" type="checkbox" name="told_specialists" value="1" id="tp<?php echo attr($k); ?>"><label class="form-check-label small" for="tp<?php echo attr($k); ?>"><?php echo xlt('for BHI and CoCM: that the billing practitioner will consult specialists, a psychiatric consultant included, and the patient agreed'); ?></label></div>
     <?php
 };
 ?>
@@ -182,7 +201,7 @@ $consentFields = static function (string $k) {
     <?php foreach ($list as $e) {
         $d = $details[$e->id] ?? ['consentHow' => '', 'note' => '', 'conditions' => []];
         $active = $e->activeIn($month);
-        $s = MonthRules::summarize($e, $entries, $list, $month); ?>
+        $s = MonthRules::summarize($e, $entries, $list, $month, $complex[$e->id] ?? false, $earlier[$e->id] ?? false); ?>
         <div class="card mb-3" data-enrollment="<?php echo attr((string)$e->id); ?>" data-service="<?php echo attr($e->service); ?>">
             <div class="card-body py-2">
                 <h2 class="h6 mb-1"><?php echo text(Labels::service($e->service)); ?>
@@ -191,14 +210,34 @@ $consentFields = static function (string $k) {
                         <?php if ($e->stoppedOn !== null) { ?> · <?php echo xlt('stopped'); ?> <?php echo text(oeFormatShortDate($e->stoppedOn->format('Y-m-d'))); ?><?php } ?></small></h2>
                 <p class="small mb-1"><?php echo xlt('Conditions'); ?>: <?php echo text(implode('; ', array_map(static fn(array $c): string => $c['title'] . ($c['code'] !== '' ? ' (' . $c['code'] . ')' : ''), $d['conditions'])) ?: xl('none chosen')); ?></p>
                 <p class="small mb-1"><?php echo xlt('Consent'); ?>:
-                    <?php echo $e->consentOn === null ? xlt('not recorded') : text(oeFormatShortDate($e->consentOn->format('Y-m-d')) . ', ' . $d['consentHow'] . ($e->consentComplete ? '' : ' (' . xl('not all four things recorded as told') . ')')); ?></p>
+                    <?php echo $e->consentOn === null ? xlt('not recorded') : text(oeFormatShortDate($e->consentOn->format('Y-m-d')) . ', ' . $d['consentHow'] . ($e->consentComplete ? '' : ' (' . xl('not everything recorded as told') . ')')); ?></p>
                 <?php if ($active) { ?>
                     <p class="mb-1" data-month-minutes="<?php echo attr((string)($s['staff'] + $s['practitioner'])); ?>">
                         <?php echo text(sprintf(xl('%1$s: %2$s minutes by clinical staff, %3$s by the billing practitioner.'), $month->key(), $s['staff'], $s['practitioner'])); ?></p>
                     <?php foreach ($s['routes'] as $route => $codes) { ?>
                         <p class="small mb-1" data-route="<?php echo attr($route); ?>" data-codes="<?php echo attr(Labels::codes($codes)); ?>">
-                            <?php echo text(Labels::role($route)); ?>:
-                            <?php echo $codes === [] ? text(sprintf(xl('%1$s more minutes for %2$s'), $s['next'][$route], Service::routes($e->service)[$route]['base'])) : '<strong>' . text(Labels::codes($codes)) . '</strong>'; ?></p>
+                            <?php echo text(Labels::route($route, $e->service)); ?>:
+                            <?php echo $codes === [] ? text(sprintf(xl('%1$s more minutes for %2$s'), $s['next'][$route], $s['nextCode'][$route] ?? '')) : '<strong>' . text(Labels::codes($codes)) . '</strong>'; ?></p>
+                    <?php } ?>
+                    <?php if (count(array_filter($s['routes'])) > 1) { ?>
+                        <p class="small text-muted mb-1"><?php echo xlt('These are alternatives: bill one of them for the month.'); ?></p>
+                    <?php } ?>
+                    <?php if ($e->service === Service::COCM) { ?>
+                        <p class="small text-muted mb-1"><?php echo $earlier[$e->id] ?? false ? xlt('A later month of the episode.') : xlt('The first month of an episode (no CoCM time in the 6 months before).'); ?>
+                            <?php echo xlt('Full minutes are used: CMS says only that CPT time rules apply and publishes no lower figures.'); ?></p>
+                    <?php } ?>
+                    <?php if ($e->service === Service::CCM) { ?>
+                        <form method="post" class="small mb-1" data-complex="<?php echo ($complex[$e->id] ?? false) ? '1' : '0'; ?>">
+                            <input type="hidden" name="csrf_token_form" value="<?php echo attr($token); ?>">
+                            <input type="hidden" name="action" value="complex"><input type="hidden" name="enrollment" value="<?php echo attr((string)$e->id); ?>">
+                            <?php if ($userId === $e->practitionerId) { ?>
+                                <label class="mb-0"><input type="checkbox" name="complex_mdm" value="1" <?php echo ($complex[$e->id] ?? false) ? 'checked' : ''; ?>>
+                                    <?php echo xlt('I made moderate or high complexity medical decisions for this patient this month (complex CCM, 99487)'); ?></label>
+                                <button class="btn btn-sm btn-link py-0" type="submit"><?php echo xlt('Save'); ?></button>
+                            <?php } else { ?>
+                                <?php echo ($complex[$e->id] ?? false) ? xlt('The billing practitioner recorded moderate or high complexity decisions this month.') : xlt('Complex CCM needs the billing practitioner to record their moderate or high complexity decisions this month.'); ?>
+                            <?php } ?>
+                        </form>
                     <?php } ?>
                     <?php if ($e->service === Service::CCM && $s['routes'][Service::STAFF] !== [] && $s['routes'][Service::PRACTITIONER] !== []) { ?>
                         <p class="small text-muted mb-1"><?php echo xlt('Bill one route or the other: 99491 and 99437 cannot go in the same month as 99490 and 99439.'); ?></p>
@@ -213,7 +252,7 @@ $consentFields = static function (string $k) {
                         <div class="form-group col-md-2"><label class="small"><?php echo xlt('Date'); ?></label><input type="date" class="form-control form-control-sm" name="served_on" value="<?php echo attr($today->format('Y-m-d')); ?>"></div>
                         <div class="form-group col-md-1"><label class="small"><?php echo xlt('Minutes'); ?></label><input type="number" min="1" max="240" class="form-control form-control-sm" name="minutes"></div>
                         <div class="form-group col-md-5"><label class="small"><?php echo xlt('What was done'); ?></label><input class="form-control form-control-sm" name="activity" maxlength="1000"></div>
-                        <?php if ($userId === $e->practitionerId && $e->service !== Service::BHI) { ?>
+                        <?php if ($userId === $e->practitionerId && !in_array($e->service, [Service::BHI, Service::COCM], true)) { ?>
                             <div class="form-group col-md-2 form-check"><input class="form-check-input" type="checkbox" name="as_practitioner" value="1" id="ap<?php echo attr((string)$e->id); ?>">
                                 <label class="form-check-label small" for="ap<?php echo attr((string)$e->id); ?>"><?php echo xlt('I did this myself'); ?></label></div>
                         <?php } ?>
@@ -275,12 +314,15 @@ $consentFields = static function (string $k) {
                     <?php foreach ($practitioners as $id => $name) { ?><option value="<?php echo attr((string)$id); ?>"><?php echo text($name); ?></option><?php } ?></select></div>
             <div class="form-group col-md-2"><label for="started_on"><?php echo xlt('Start'); ?></label><input type="date" class="form-control form-control-sm" id="started_on" name="started_on" value="<?php echo attr($today->format('Y-m-d')); ?>"></div>
         </div>
-        <p class="small mb-1"><?php echo xlt('Conditions managed (from the active problem list; CCM needs two or more chronic conditions expected to last at least 12 months, PCM one high-risk condition expected to last at least 3 months):'); ?></p>
+        <p class="small mb-1"><?php echo xlt('Conditions managed (from the active problem list; CCM needs two or more chronic conditions expected to last at least 12 months, PCM one high-risk condition expected to last at least 3 months, BHI and CoCM the behavioral health condition):'); ?></p>
         <?php foreach ($problems as $p) { ?>
             <div class="form-check"><input class="form-check-input" type="checkbox" name="conditions[]" value="<?php echo attr((string)$p['id']); ?>" id="c<?php echo attr((string)$p['id']); ?>">
                 <label class="form-check-label small" for="c<?php echo attr((string)$p['id']); ?>"><?php echo text($p['title'] . ($p['code'] !== '' ? ' (' . $p['code'] . ')' : '')); ?></label></div>
         <?php } ?>
         <?php if ($problems === []) { ?><p class="small text-muted"><?php echo xlt('No active problems on the problem list.'); ?></p><?php } ?>
+        <p class="small text-muted mb-1"><?php echo xlt('APCM is billed by the number of chronic conditions chosen: G0556 for one or none, G0557 for two or more, G0558 for a Qualified Medicare Beneficiary with two or more.'); ?></p>
+        <div class="form-check mb-2"><input class="form-check-input" type="checkbox" name="qmb" value="1" id="qmb">
+            <label class="form-check-label small" for="qmb"><?php echo xlt('For APCM: the patient is a Qualified Medicare Beneficiary (QMB)'); ?></label></div>
         <?php $consentFields('new'); ?>
         <div class="form-group"><label for="note"><?php echo xlt('Note'); ?></label><input class="form-control form-control-sm" id="note" name="note" maxlength="500"></div>
         <button class="btn btn-sm btn-primary" type="submit"><?php echo xlt('Enroll'); ?></button>

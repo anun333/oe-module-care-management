@@ -17,12 +17,13 @@ namespace OpenHealthcare\CareManagement\Repository;
 
 use OpenEMR\Common\Database\QueryUtils;
 use OpenHealthcare\CareManagement\Domain\Enrollment;
+use OpenHealthcare\CareManagement\Domain\Service;
 use OpenHealthcare\CareManagement\Domain\Month;
 
 final class EnrollmentRepository
 {
     private const COLUMNS = '`id`, `pid`, `service`, `practitioner_id`, `conditions_json`, `consent_on`, `consent_how`, `consent_explained`,
-        `consent_by`, `initiating_needed`, `initiating_visit_on`, `started_on`, `stopped_on`, `note`';
+        `consent_by`, `initiating_needed`, `initiating_visit_on`, `started_on`, `stopped_on`, `note`, `qmb`';
 
     /** @return list<Enrollment> newest first */
     public function forPatient(int $pid): array
@@ -62,14 +63,15 @@ final class EnrollmentRepository
      * @param list<array{id: int, title: string, code: string}> $conditions
      */
     public function add(int $pid, string $service, int $practitionerId, array $conditions, ?string $consentOn, ?string $consentHow, bool $explained,
-        ?string $initiatingVisitOn, string $startedOn, string $note, int $userId): int
+        ?string $initiatingVisitOn, string $startedOn, string $note, int $userId, bool $qmb = false): int
     {
         return (int)QueryUtils::sqlInsert(
             'INSERT INTO `care_mgmt_enrollment` (`pid`, `service`, `practitioner_id`, `conditions_json`, `consent_on`, `consent_how`, `consent_explained`,
-                 `consent_by`, `initiating_needed`, `initiating_visit_on`, `started_on`, `note`, `created_by`)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                 `consent_by`, `initiating_needed`, `initiating_visit_on`, `started_on`, `note`, `created_by`, `qmb`)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [$pid, $service, $practitionerId, json_encode($conditions, JSON_THROW_ON_ERROR), $consentOn, $consentHow, $explained ? 1 : 0,
-                $consentOn === null ? null : $userId, $this->seenInYearBefore($pid, $startedOn) ? 0 : 1, $initiatingVisitOn, $startedOn, $note, $userId],
+                $consentOn === null ? null : $userId, $this->seenInYearBefore($pid, $startedOn) ? 0 : 1, $initiatingVisitOn, $startedOn, $note, $userId,
+                $service === Service::APCM && $qmb ? 1 : 0],
         );
     }
 
@@ -157,6 +159,7 @@ final class EnrollmentRepository
             $date($r['initiating_visit_on']),
             new \DateTimeImmutable((string)$r['started_on']),
             $date($r['stopped_on']),
+            (int)($r['qmb'] ?? 0) === 1,
         );
     }
 }

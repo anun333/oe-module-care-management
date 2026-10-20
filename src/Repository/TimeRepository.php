@@ -17,6 +17,7 @@ namespace OpenHealthcare\CareManagement\Repository;
 
 use OpenEMR\Common\Database\QueryUtils;
 use OpenHealthcare\CareManagement\Domain\Month;
+use OpenHealthcare\CareManagement\Domain\Service;
 
 final class TimeRepository
 {
@@ -50,6 +51,31 @@ final class TimeRepository
             'activity' => (string)$r['activity'],
             'user' => trim((string)($r['user_name'] ?? '')),
         ], QueryUtils::fetchRecords($sql, $binds));
+    }
+
+    /**
+     * Which of these enrollments had time in the calendar months just before this one, up to
+     * Service::COCM_NEW_EPISODE_MONTHS: for CoCM, a month in an episode already under way.
+     *
+     * @param list<int> $enrollmentIds
+     * @return array<int, bool> enrollment id => had time
+     */
+    public function hadTimeBefore(array $enrollmentIds, Month $month): array
+    {
+        if ($enrollmentIds === []) {
+            return [];
+        }
+        $from = $month->first()->modify('-' . Service::COCM_NEW_EPISODE_MONTHS . ' months')->format('Y-m-d');
+        $rows = QueryUtils::fetchRecords(
+            'SELECT DISTINCT `enrollment_id` FROM `care_mgmt_time` WHERE `removed_at` IS NULL AND `served_on` >= ? AND `served_on` < ?
+               AND `enrollment_id` IN (' . implode(', ', array_fill(0, count($enrollmentIds), '?')) . ')',
+            [$from, $month->first()->format('Y-m-d'), ...$enrollmentIds],
+        );
+        $out = array_fill_keys($enrollmentIds, false);
+        foreach ($rows as $r) {
+            $out[(int)$r['enrollment_id']] = true;
+        }
+        return $out;
     }
 
     public function add(int $pid, int $enrollmentId, string $servedOn, int $minutes, string $role, string $activity, int $userId): int

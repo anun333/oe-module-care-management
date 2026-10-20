@@ -29,6 +29,7 @@ use OpenHealthcare\CareManagement\Domain\MonthRules;
 use OpenHealthcare\CareManagement\Domain\Service;
 use OpenHealthcare\CareManagement\Labels;
 use OpenHealthcare\CareManagement\Repository\EnrollmentRepository;
+use OpenHealthcare\CareManagement\Repository\MonthRepository;
 use OpenHealthcare\CareManagement\Repository\TimeRepository;
 
 // Many patients' care on one page: the same check as the Staff Worklist.
@@ -57,11 +58,18 @@ $byPatient = [];
 foreach ($active as $e) {
     $byPatient[$e->pid][] = $e;
 }
+$ids = array_map(static fn($e): int => $e->id, $active);
+$complex = (new MonthRepository())->complex($ids, $month);
+$earlier = (new TimeRepository())->hadTimeBefore($ids, $month);
 $lines = [];
 foreach ($active as $e) {
-    $s = MonthRules::summarize($e, $entries, $byPatient[$e->pid], $month);
-    $lines[] = ['e' => $e, 's' => $s, 'billable' => $s['blockers'] === [] && ($s['routes'][Service::STAFF] !== [] || ($s['routes'][Service::PRACTITIONER] ?? []) !== [])];
+    $s = MonthRules::summarize($e, $entries, $byPatient[$e->pid], $month, $complex[$e->id] ?? false, $earlier[$e->id] ?? false);
+    $lines[] = ['e' => $e, 's' => $s, 'billable' => $s['blockers'] === [] && array_filter($s['routes']) !== []];
 }
+// The routes past staff and practitioner (complex CCM, APCM, an APCM add-on), as one text.
+$others = static fn(array $s): string => implode('; ', array_map(
+    static fn(string $route): string => Labels::route($route, '') . ': ' . Labels::codes($s['routes'][$route]),
+    array_keys(array_filter(array_diff_key($s['routes'], [Service::STAFF => 1, Service::PRACTITIONER => 1])))));
 EventAuditLogger::getInstance()->newEvent('patient-record-select', (string)$session->get('authUser'), (string)$session->get('authProvider'), 1,
     'Care Management month list ' . $month->key() . ($csv ? ' (CSV)' : '') . ', pids: ' . implode(',', $pids));
 $name = static fn(int $pid): string => isset($patients[$pid]) ? trim($patients[$pid]['lname'] . ', ' . $patients[$pid]['fname'], ', ') : '#' . $pid;
@@ -74,13 +82,13 @@ if ($csv) {
     if ($out === false) {
         exit;
     }
-    fputcsv($out, ['Patient', 'ID', 'Service', 'Billing practitioner', 'Staff minutes', 'Practitioner minutes', 'Staff route codes', 'Practitioner route codes', 'Billable', 'Blocked by'], ',', '"', '');
+    fputcsv($out, ['Patient', 'ID', 'Service', 'Billing practitioner', 'Staff minutes', 'Practitioner minutes', 'Staff route codes', 'Practitioner route codes', 'Other codes', 'Billable', 'Blocked by'], ',', '"', '');
     foreach ($lines as $l) {
         $e = $l['e'];
         $s = $l['s'];
         fputcsv($out, [$name($e->pid), (string)($patients[$e->pid]['pubpid'] ?? ''), strtoupper($e->service), $practitioners[$e->practitionerId] ?? '',
-            $s['staff'], $s['practitioner'], Labels::codes($s['routes'][Service::STAFF]), Labels::codes($s['routes'][Service::PRACTITIONER] ?? []),
-            $l['billable'] ? 'yes' : 'no', implode('; ', array_map(Labels::blocker(...), $s['blockers']))], ',', '"', '');
+            $s['staff'], $s['practitioner'], Labels::codes($s['routes'][Service::STAFF] ?? []), Labels::codes($s['routes'][Service::PRACTITIONER] ?? []),
+            $others($s), $l['billable'] ? 'yes' : 'no', implode('; ', array_map(Labels::blocker(...), $s['blockers']))], ',', '"', '');
     }
     fclose($out);
     exit;
@@ -96,7 +104,7 @@ $moduleUrl = OEGlobalsBag::getInstance()->getWebRoot() . Bootstrap::MODULE_INSTA
 <body class="body_top">
 <div class="container-fluid py-3">
     <h1 class="h4"><?php echo xlt('Care Management'); ?>: <?php echo text($month->key()); ?></h1>
-    <p class="small text-muted"><?php echo xlt('Minutes are counted per calendar month and never carry over. Each add-on needs its full time. Health centers bill these codes themselves, paid outside the PPS rate. This list bills nothing: add the codes on a fee sheet.'); ?></p>
+    <p class="small text-muted"><?php echo xlt('Minutes are counted per calendar month and never carry over. Each add-on needs its full time, and CoCM its full minutes. APCM and its add-ons have no time requirement. Health centers bill these codes themselves, paid outside the PPS rate. This list bills nothing: add the codes on a fee sheet.'); ?></p>
     <form method="get" class="form-inline mb-3">
         <label class="mr-2" for="month"><?php echo xlt('Month'); ?></label>
         <input type="month" class="form-control form-control-sm mr-2" id="month" name="month" value="<?php echo attr($month->key()); ?>">
@@ -118,9 +126,10 @@ $moduleUrl = OEGlobalsBag::getInstance()->getWebRoot() . Bootstrap::MODULE_INSTA
                 <td><?php echo text($practitioners[$e->practitionerId] ?? ''); ?></td>
                 <td class="text-right"><?php echo text((string)$s['staff']); ?></td>
                 <td class="text-right"><?php echo text((string)$s['practitioner']); ?></td>
-                <td data-codes="<?php echo attr(Labels::codes($s['routes'][Service::STAFF])); ?>">
-                    <?php echo text(Labels::codes($s['routes'][Service::STAFF]) ?: '—'); ?>
+                <td data-codes="<?php echo attr(Labels::codes($s['routes'][Service::STAFF] ?? [])); ?>" data-other="<?php echo attr($others($s)); ?>">
+                    <?php echo text(Labels::codes($s['routes'][Service::STAFF] ?? []) ?: (array_filter($s['routes']) === [] ? '—' : '')); ?>
                     <?php if (($s['routes'][Service::PRACTITIONER] ?? []) !== []) { ?><br><span class="small"><?php echo xlt('or'); ?> <?php echo text(Labels::codes($s['routes'][Service::PRACTITIONER])); ?></span><?php } ?>
+                    <?php if ($others($s) !== '') { ?><br><span class="small"><?php echo xlt('or'); ?> <?php echo text($others($s)); ?></span><?php } ?>
                 </td>
                 <td class="small text-danger"><?php echo text(implode('; ', array_map(Labels::blocker(...), $s['blockers']))); ?></td>
             </tr>

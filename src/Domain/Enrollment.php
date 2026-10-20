@@ -21,6 +21,7 @@ final class Enrollment
      * @param list<string> $conditions the problems managed, as their codes or titles
      * @param bool         $consentComplete the patient was told all four things CMS lists, and agreed
      * @param bool         $initiatingNeeded no visit in the year before the start, so an initiating visit is needed
+     * @param bool         $qmb a Qualified Medicare Beneficiary (APCM's G0558)
      */
     public function __construct(
         public readonly int $id,
@@ -34,6 +35,7 @@ final class Enrollment
         public readonly ?\DateTimeImmutable $initiatingVisitOn,
         public readonly \DateTimeImmutable $startedOn,
         public readonly ?\DateTimeImmutable $stoppedOn,
+        public readonly bool $qmb = false,
     ) {
     }
 
