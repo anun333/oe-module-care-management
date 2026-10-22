@@ -75,6 +75,7 @@ RHCs and FQHCs bill these individual codes. CMS ended G0511 (billing was allowed
 | Month list and menu entry | `patients/med` | the Staff Worklist |
 | The month list's CSV, and its Billed column | `acct/bill` | OpenEMR's billing pages |
 | The patient's page (enroll, consent, log time) | `patients/med` write | the Staff Worklist's actions |
+| The Staff Worklist's "Care management, not billed" tab (with the Staff Worklist 0.8.0 or later) | `acct/bill` | the month list's billing columns |
 | Dashboard card | `patients/med` | the module's pages |
 
 Every view and every change is written to OpenEMR's audit log. Time entries are never edited: a wrong one is removed, and the removal is kept with who made it and when.

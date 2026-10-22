@@ -15,10 +15,12 @@ declare(strict_types=1);
 
 namespace OpenHealthcare\CareManagement;
 
+use OpenEMR\Common\Acl\AclMain;
 use OpenEMR\Events\Core\TwigEnvironmentEvent;
 use OpenEMR\Events\Patient\Summary\Card\SectionEvent;
 use OpenEMR\Menu\MenuEvent;
 use OpenHealthcare\CareManagement\Card\CareManagementCard;
+use OpenHealthcare\CareManagement\Worklist\UnbilledSource;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Twig\Loader\FilesystemLoader;
 
@@ -36,6 +38,18 @@ class Bootstrap
         $this->eventDispatcher->addListener(MenuEvent::MENU_UPDATE, $this->addMenuItem(...));
         $this->eventDispatcher->addListener(TwigEnvironmentEvent::EVENT_CREATED, $this->addTemplates(...));
         $this->eventDispatcher->addListener(SectionEvent::EVENT_HANDLE, $this->addCard(...));
+        // The Staff Worklist asks for other modules' tabs; its name, so this module needn't load that one's classes.
+        $this->eventDispatcher->addListener('staff_worklist.collect_sources', $this->addWorklistTab(...));
+    }
+
+    /** "Care management, not billed" in the Staff Worklist, for users who may see billing, as the month list requires. */
+    public function addWorklistTab(object $event): void
+    {
+        if (!method_exists($event, 'addSource') || !interface_exists('OpenHealthcare\\StaffWorklist\\Source\\WorkSourceInterface')
+            || !AclMain::aclCheckCore('acct', 'bill')) {
+            return;
+        }
+        $event->addSource(new UnbilledSource($event->now), xl('Care management, not billed'), xl('Billing practitioner'));
     }
 
     public function addMenuItem(MenuEvent $event): MenuEvent
