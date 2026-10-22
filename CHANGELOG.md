@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.2 (unreleased)
+
+- **The month's lines as a class** (`Repository\MonthLines`): each active enrollment's minutes, codes met, what was billed and the billing check, which the month list used to work out in its page. The month list and the Staff Worklist's new care management tab both read it, so they agree. Nothing on the month list changes; its end-to-end check is unchanged (33 checks on OpenEMR 8.4.1).
+
 ## 0.3.1 (2026-10-20)
 
 - **Fixed:** the month list's note about the Billed column read "the patient`s fee sheets". OpenEMR's `xl()` turns an apostrophe into a backtick, so the note is reworded, and a test now fails on any translated string with an apostrophe or quote mark.

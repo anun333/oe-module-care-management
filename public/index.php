@@ -26,13 +26,10 @@ use OpenEMR\Core\OEGlobalsBag;
 use OpenHealthcare\CareManagement\Bootstrap;
 use OpenHealthcare\CareManagement\Domain\BillingCheck;
 use OpenHealthcare\CareManagement\Domain\Month;
-use OpenHealthcare\CareManagement\Domain\MonthRules;
 use OpenHealthcare\CareManagement\Domain\Service;
 use OpenHealthcare\CareManagement\Labels;
-use OpenHealthcare\CareManagement\Repository\BillingRepository;
 use OpenHealthcare\CareManagement\Repository\EnrollmentRepository;
-use OpenHealthcare\CareManagement\Repository\MonthRepository;
-use OpenHealthcare\CareManagement\Repository\TimeRepository;
+use OpenHealthcare\CareManagement\Repository\MonthLines;
 
 // Many patients' care on one page: the same check as the Staff Worklist.
 if (!AclMain::aclCheckCore('patients', 'med')) {
@@ -47,9 +44,8 @@ if ($csv && !$seesBilling) {
     AccessDeniedHelper::denyWithTemplate('ACL check failed for acct/bill: Care Management billing list', xl('Care Management'));
 }
 $repo = new EnrollmentRepository();
-$active = $repo->activeIn($month);
-$pids = array_values(array_unique(array_map(static fn($e): int => $e->pid, $active)));
-$entries = (new TimeRepository())->inMonth($month, $pids);
+$lines = (new MonthLines())->forMonth($month, $seesBilling, new DateTimeImmutable('today'));
+$pids = array_values(array_unique(array_map(static fn(array $l): int => $l['e']->pid, $lines)));
 $practitioners = $repo->practitioners();
 $patients = [];
 if ($pids !== []) {
@@ -57,22 +53,6 @@ if ($pids !== []) {
     foreach ($rows as $r) {
         $patients[(int)$r['pid']] = $r;
     }
-}
-$byPatient = [];
-foreach ($active as $e) {
-    $byPatient[$e->pid][] = $e;
-}
-$ids = array_map(static fn($e): int => $e->id, $active);
-$complex = (new MonthRepository())->complex($ids, $month);
-$earlier = (new TimeRepository())->hadTimeBefore($ids, $month);
-$billed = $seesBilling ? (new BillingRepository())->billedIn($month, $pids) : [];
-$monthOver = $month->last() < new DateTimeImmutable('today');
-$lines = [];
-foreach ($active as $e) {
-    $s = MonthRules::summarize($e, $entries, $byPatient[$e->pid], $month, $complex[$e->id] ?? false, $earlier[$e->id] ?? false);
-    $codesBilled = BillingCheck::forService($billed[$e->pid] ?? [], $e->service);
-    $lines[] = ['e' => $e, 's' => $s, 'billable' => $s['blockers'] === [] && array_filter($s['routes']) !== [],
-        'billed' => $codesBilled, 'check' => BillingCheck::check($s['routes'], $s['blockers'], $codesBilled, $monthOver)];
 }
 // "99490 + 99439 x2" for code => units.
 $units = static fn(array $codes): string => Labels::codes(array_map(static fn(string $c, int $u): array => ['code' => $c, 'units' => $u], array_keys($codes), $codes));

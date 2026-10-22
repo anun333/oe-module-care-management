@@ -80,9 +80,9 @@ As written in the source; whether they behave correctly for a given user is not 
 
 | part | files | lines |
 |---|---|---|
-| PHP logic (`src/`) | 12 | 1142 |
+| PHP logic (`src/`) | 13 | 1198 |
 | tools (`tools/`) | 1 | 574 |
-| pages (`public/`) | 2 | 499 |
+| pages (`public/`) | 2 | 479 |
 | tests (`tests/`, `phpunit.xml.dist`) | 5 | 413 |
 | module wiring | 5 | 145 |
 | install SQL (`sql/`) | 2 | 87 |
