@@ -81,10 +81,10 @@ As written in the source; whether they behave correctly for a given user is not 
 | part | files | lines |
 |---|---|---|
 | PHP logic (`src/`) | 15 | 1363 |
-| tools (`tools/`) | 1 | 574 |
+| tools (`tools/`) | 1 | 634 |
 | pages (`public/`) | 2 | 479 |
-| tests (`tests/`, `phpunit.xml.dist`) | 6 | 448 |
-| module wiring | 5 | 151 |
+| tests (`tests/`, `phpunit.xml.dist`) | 6 | 426 |
+| module wiring | 5 | 152 |
 | install SQL (`sql/`) | 2 | 87 |
 | other | 1 | 36 |
 
