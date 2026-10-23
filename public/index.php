@@ -87,7 +87,8 @@ if ($csv) {
 $moduleUrl = OEGlobalsBag::getInstance()->getWebRoot() . Bootstrap::MODULE_INSTALLATION_PATH . '/public/';
 ?>
 <!DOCTYPE html>
-<html>
+<?php // The module's own text is written in English. ?>
+<html lang="en">
 <head>
     <title><?php echo xlt('Care Management'); ?></title>
     <?php Header::setupHeader(); ?>

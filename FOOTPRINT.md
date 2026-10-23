@@ -82,7 +82,7 @@ As written in the source; whether they behave correctly for a given user is not 
 |---|---|---|
 | PHP logic (`src/`) | 15 | 1363 |
 | tools (`tools/`) | 1 | 634 |
-| pages (`public/`) | 2 | 479 |
+| pages (`public/`) | 2 | 481 |
 | tests (`tests/`, `phpunit.xml.dist`) | 6 | 426 |
 | module wiring | 5 | 152 |
 | install SQL (`sql/`) | 2 | 87 |
