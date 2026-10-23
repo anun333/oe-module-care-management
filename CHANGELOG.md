@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.2 (unreleased)
+## 0.3.2 (2026-10-22)
 
 - **A Staff Worklist tab: "Care management, not billed."** With the Staff Worklist installed (0.8.0 or later), this module adds the tab through the worklist's `staff_worklist.collect_sources` event: an enrollment whose month, in the last three completed months, met a code with nothing billed for its service. It's added for users who may see billing (`acct/bill`), as the month list requires. Each row is one enrollment and month, owned by the billing practitioner, and opens the month list. Checked in the end-to-end check on 8.4.1 and master (35 checks): 9301's September, met and not billed, is listed; a billed month and one still running aren't.
 - **The month's lines as a class** (`Repository\MonthLines`): each active enrollment's minutes, codes met, what was billed and the billing check, which the month list used to work out in its page. The month list and the Staff Worklist's new care management tab both read it, so they agree. Nothing on the month list changes; its end-to-end check is unchanged (33 checks on OpenEMR 8.4.1).
