@@ -96,6 +96,8 @@ Then in OpenEMR, Modules › Manage Modules: Register, Install and Enable **Care
 
 ## Compatibility
 
+**Older OpenEMR:** on 7.0.3 and older (no `OEGlobalsBag`), the module stays switched off rather than stop OpenEMR's pages; it hasn't been tested from 7.0.4 to 8.3. Checked on a fresh 7.0.2 install with every module enabled (`dev/module_compat_check.sh`).
+
 Tested with synthetic data on OpenEMR 8.4.1 (Docker image `openemr/openemr:8.4.1`), with `dev/care_management_check.py` in the openhealthcare repository. That check:
 - installs the module through Module Manager;
 - enrolls five patients with conditions from their problem lists;

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.3 (unreleased)
+
+- **No longer stops an older OpenEMR.** OpenEMR loads a module's bootstrap on every request, the login page included. This module's used `OEGlobalsBag`, which came with OpenEMR 7.0.4 and 8.0, so on 7.0.3 or older, enabling it made every page fail (HTTP 500), login included, until the module was switched off in the database. It now stays switched off there instead. Found by the nightly matrix's new fresh 7.0.2 install (`dev/module_compat_check.sh`).
+
 ## 0.3.2 (2026-10-22)
 
 - **A Staff Worklist tab: "Care management, not billed."** With the Staff Worklist installed (0.8.0 or later), this module adds the tab through the worklist's `staff_worklist.collect_sources` event: an enrollment whose month, in the last three completed months, met a code with nothing billed for its service. It's added for users who may see billing (`acct/bill`), as the month list requires. Each row is one enrollment and month, owned by the billing practitioner, and opens the month list. Checked in the end-to-end check on 8.4.1 and master (35 checks): 9301's September, met and not billed, is listed; a billed month and one still running aren't.
