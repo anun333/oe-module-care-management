@@ -70,6 +70,7 @@ As written in the source; whether they behave correctly for a given user is not 
 
 ## Settings it reads
 
+- `css_header` (`src/Contrast.php`)
 - `webroot` (`public/index.php`, `public/patient.php`, `src/Card/CareManagementCard.php`)
 
 ## Files it writes
@@ -88,9 +89,9 @@ As written in the source; whether they behave correctly for a given user is not 
 
 | part | files | lines |
 |---|---|---|
-| PHP logic (`src/`) | 15 | 1363 |
-| pages (`public/`) | 2 | 481 |
-| tests (`tests/`, `phpunit.xml.dist`) | 6 | 426 |
+| PHP logic (`src/`) | 16 | 1413 |
+| pages (`public/`) | 2 | 483 |
+| tests (`tests/`, `phpunit.xml.dist`) | 7 | 473 |
 | module wiring | 5 | 173 |
 | install SQL (`sql/`) | 2 | 87 |
 | other | 1 | 36 |

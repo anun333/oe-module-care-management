@@ -92,6 +92,7 @@ $moduleUrl = OpenEmr::webRoot() . Bootstrap::MODULE_INSTALLATION_PATH . '/public
 <head>
     <title><?php echo xlt('Care Management'); ?></title>
     <?php Header::setupHeader(); ?>
+    <?php echo \OpenHealthcare\CareManagement\Contrast::style(); ?>
 </head>
 <body class="body_top">
 <div class="container-fluid py-3">

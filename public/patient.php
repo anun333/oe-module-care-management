@@ -183,6 +183,7 @@ $consentFields = static function (string $k) {
 <head>
     <title><?php echo xlt('Care Management'); ?></title>
     <?php Header::setupHeader(); ?>
+    <?php echo \OpenHealthcare\CareManagement\Contrast::style(); ?>
 </head>
 <body class="body_top">
 <div class="container-fluid py-3">
