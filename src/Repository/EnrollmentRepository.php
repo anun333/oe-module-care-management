@@ -26,18 +26,23 @@ final class EnrollmentRepository
         `consent_by`, `initiating_visit_on`, `started_on`, `stopped_on`, `note`, `qmb`';
 
     /**
-     * The columns read, with whether an initiating visit is needed. APCM's is worked out on
-     * read, under its 3-year rule (Service::initiatingLookBack), so enrollments saved under
-     * 0.3.7's 1-year rule read right too; the other services keep what was stored at enrollment.
+     * The columns read, with whether an initiating visit is needed, worked out on read under
+     * each service's rule (Service::initiatingLookBack), so enrollments saved under an earlier
+     * rule read right too: 0.3.7's 1 year for APCM, and before 0.3.9 a visit with any
+     * practitioner for the others. What was stored at enrollment stays for an unknown service.
      */
     public static function columns(): string
     {
-        $apcm = Service::initiatingLookBack(Service::APCM);
-        $seen = 'SELECT 1 FROM `form_encounter` AS fe WHERE fe.`pid` = `care_mgmt_enrollment`.`pid`'
-            . ' AND fe.`provider_id` = `care_mgmt_enrollment`.`practitioner_id`'
-            . ' AND fe.`date` < `care_mgmt_enrollment`.`started_on`'
-            . ' AND fe.`date` >= DATE_SUB(`care_mgmt_enrollment`.`started_on`, INTERVAL ' . (int)$apcm['years'] . ' YEAR)';
-        return self::COLUMNS . ", IF(`service` = '" . Service::APCM . "', NOT EXISTS ($seen), `initiating_needed`) AS `initiating_needed`";
+        $cases = '';
+        foreach (Service::ALL as $service) {
+            $rule = Service::initiatingLookBack($service);
+            $seen = 'SELECT 1 FROM `form_encounter` AS fe WHERE fe.`pid` = `care_mgmt_enrollment`.`pid`'
+                . ($rule['byPractitioner'] ? ' AND fe.`provider_id` = `care_mgmt_enrollment`.`practitioner_id`' : '')
+                . ' AND fe.`date` < `care_mgmt_enrollment`.`started_on`'
+                . ' AND fe.`date` >= DATE_SUB(`care_mgmt_enrollment`.`started_on`, INTERVAL ' . (int)$rule['years'] . ' YEAR)';
+            $cases .= " WHEN '" . $service . "' THEN NOT EXISTS ($seen)";
+        }
+        return self::COLUMNS . ', CASE `service`' . $cases . ' ELSE `initiating_needed` END AS `initiating_needed`';
     }
 
     /** @return list<Enrollment> newest first */

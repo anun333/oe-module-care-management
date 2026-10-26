@@ -19,7 +19,7 @@
     ],
     "require": {
         "php": ">=8.2",
-        "anun333/openhealthcare-common": "^1.3.3",
+        "anun333/openhealthcare-common": "^1.4.0",
         "openemr/oe-module-installer-plugin": "^0.1.5"
     },
     "require-dev": {
@@ -52,10 +52,7 @@
             "footprint-not-covered": [
                 "Whether the permission checks above behave correctly for restricted users. They aren't yet checked end to end with a restricted login; the README says what each page asks for.",
                 "Whether each month's codes are right. The unit tests in `tests/` cover CMS's time and code rules; the end-to-end check against a running OpenEMR is described in the README."
-            ],
-            "guide-labels-elsewhere": {
-                "Enroll, consent and log time": "templates/card.html.twig"
-            }
+            ]
         }
     }
 }

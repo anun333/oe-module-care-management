@@ -32,6 +32,7 @@ use OpenHealthcare\CareManagement\Labels;
 use OpenHealthcare\CareManagement\Repository\EnrollmentRepository;
 use OpenHealthcare\CareManagement\Repository\MonthRepository;
 use OpenHealthcare\CareManagement\Repository\TimeRepository;
+use OpenHealthcare\CareManagement\Page;
 use OpenHealthcare\Common\OpenEmr;
 
 // Logging care is clinical documentation: the same check as the Staff Worklist's actions.
@@ -43,7 +44,23 @@ $userId = (int)$session->get('authUserID');
 $pid = (int)($_GET['pid'] ?? $session->get('pid') ?? 0);
 $patient = QueryUtils::fetchRecords('SELECT `pid`, `fname`, `lname`, `pubpid` FROM `patient_data` WHERE `pid` = ?', [$pid])[0] ?? null;
 if ($patient === null) {
-    die(xlt('No such patient.'));
+    ?>
+<!DOCTYPE html>
+<html lang="<?php echo attr(Page::lang()); ?>" dir="<?php echo attr(Page::dir()); ?>">
+<head>
+    <title><?php echo xlt('Care Management'); ?></title>
+    <?php Header::setupHeader(); ?>
+    <?php echo \OpenHealthcare\CareManagement\Contrast::style(); ?>
+</head>
+<body class="body_top">
+<div class="container-fluid py-3">
+    <h1 class="h4"><?php echo xlt('Care Management'); ?></h1>
+    <div class="alert alert-warning" role="alert" data-state="error"><?php echo xlt('No such patient.'); ?></div>
+</div>
+</body>
+</html>
+    <?php
+    return;
 }
 $enrollments = new EnrollmentRepository();
 $times = new TimeRepository();
@@ -161,13 +178,14 @@ $complex = (new MonthRepository())->complex($ids, $month);
 $earlier = $times->hadTimeBefore($ids, $month);
 $moduleUrl = OpenEmr::webRoot() . Bootstrap::MODULE_INSTALLATION_PATH . '/public/';
 $token = CsrfUtils::collectCsrfToken(session: $session);
+$consentHow = ['verbal' => xl('Verbal'), 'written' => xl('Written')];
 $consentFields = static function (string $k) {
     ?>
     <div class="form-row">
-        <div class="form-group col-md-3"><label><?php echo xlt('Consent date'); ?></label><input type="date" class="form-control form-control-sm" name="consent_on"></div>
-        <div class="form-group col-md-3"><label><?php echo xlt('Consent was'); ?></label>
-            <select class="form-control form-control-sm" name="consent_how"><option value=""></option><option value="verbal"><?php echo xlt('Verbal'); ?></option><option value="written"><?php echo xlt('Written'); ?></option></select></div>
-        <div class="form-group col-md-3"><label><?php echo xlt('Initiating visit, if needed'); ?></label><input type="date" class="form-control form-control-sm" name="initiating_visit_on"></div>
+        <div class="form-group col-md-3"><label for="con<?php echo attr($k); ?>"><?php echo xlt('Consent date'); ?></label><input type="date" class="form-control form-control-sm" id="con<?php echo attr($k); ?>" name="consent_on"></div>
+        <div class="form-group col-md-3"><label for="chow<?php echo attr($k); ?>"><?php echo xlt('Consent was'); ?></label>
+            <select class="form-control form-control-sm" id="chow<?php echo attr($k); ?>" name="consent_how"><option value=""></option><option value="verbal"><?php echo xlt('Verbal'); ?></option><option value="written"><?php echo xlt('Written'); ?></option></select></div>
+        <div class="form-group col-md-3"><label for="iv<?php echo attr($k); ?>"><?php echo xlt('Initiating visit, if needed'); ?></label><input type="date" class="form-control form-control-sm" id="iv<?php echo attr($k); ?>" name="initiating_visit_on"></div>
     </div>
     <p class="small mb-1"><?php echo xlt('The patient was told (CMS requires the first four, and for BHI and CoCM the fifth too):'); ?></p>
     <div class="form-check"><input class="form-check-input" type="checkbox" name="told_available" value="1" id="ta<?php echo attr($k); ?>"><label class="form-check-label small" for="ta<?php echo attr($k); ?>"><?php echo xlt('that the service is available to them'); ?></label></div>
@@ -179,8 +197,7 @@ $consentFields = static function (string $k) {
 };
 ?>
 <!DOCTYPE html>
-<?php // The module's own text is written in English. ?>
-<html lang="en">
+<html lang="<?php echo attr(Page::lang()); ?>" dir="<?php echo attr(Page::dir()); ?>">
 <head>
     <title><?php echo xlt('Care Management'); ?></title>
     <?php Header::setupHeader(); ?>
@@ -214,7 +231,7 @@ $consentFields = static function (string $k) {
                         <?php if ($e->stoppedOn !== null) { ?> · <?php echo xlt('stopped'); ?> <?php echo text(oeFormatShortDate($e->stoppedOn->format('Y-m-d'))); ?><?php } ?></small></h2>
                 <p class="small mb-1"><?php echo xlt('Conditions'); ?>: <?php echo text(implode('; ', array_map(static fn(array $c): string => $c['title'] . ($c['code'] !== '' ? ' (' . $c['code'] . ')' : ''), $d['conditions'])) ?: xl('none chosen')); ?></p>
                 <p class="small mb-1"><?php echo xlt('Consent'); ?>:
-                    <?php echo $e->consentOn === null ? xlt('not recorded') : text(oeFormatShortDate($e->consentOn->format('Y-m-d')) . ', ' . $d['consentHow'] . ($e->consentComplete ? '' : ' (' . xl('not everything recorded as told') . ')')); ?></p>
+                    <?php echo $e->consentOn === null ? xlt('not recorded') : text(oeFormatShortDate($e->consentOn->format('Y-m-d')) . ', ' . ($consentHow[$d['consentHow']] ?? $d['consentHow']) . ($e->consentComplete ? '' : ' (' . xl('not everything recorded as told') . ')')); ?></p>
                 <?php if ($active) { ?>
                     <p class="mb-1" data-month-minutes="<?php echo attr((string)($s['staff'] + $s['practitioner'])); ?>">
                         <?php echo text(sprintf(xl('%1$s: %2$s minutes by clinical staff, %3$s by the billing practitioner.'), $month->key(), $s['staff'], $s['practitioner'])); ?></p>
@@ -253,9 +270,9 @@ $consentFields = static function (string $k) {
                     <form method="post" class="form-row align-items-end mt-2">
                         <input type="hidden" name="csrf_token_form" value="<?php echo attr($token); ?>">
                         <input type="hidden" name="action" value="log"><input type="hidden" name="enrollment" value="<?php echo attr((string)$e->id); ?>">
-                        <div class="form-group col-md-2"><label class="small"><?php echo xlt('Date'); ?></label><input type="date" class="form-control form-control-sm" name="served_on" value="<?php echo attr($today->format('Y-m-d')); ?>"></div>
-                        <div class="form-group col-md-1"><label class="small"><?php echo xlt('Minutes'); ?></label><input type="number" min="1" max="240" class="form-control form-control-sm" name="minutes"></div>
-                        <div class="form-group col-md-5"><label class="small"><?php echo xlt('What was done'); ?></label><input class="form-control form-control-sm" name="activity" maxlength="1000"></div>
+                        <div class="form-group col-md-2"><label class="small" for="so<?php echo attr((string)$e->id); ?>"><?php echo xlt('Date'); ?></label><input type="date" class="form-control form-control-sm" id="so<?php echo attr((string)$e->id); ?>" name="served_on" value="<?php echo attr($today->format('Y-m-d')); ?>"></div>
+                        <div class="form-group col-md-1"><label class="small" for="mi<?php echo attr((string)$e->id); ?>"><?php echo xlt('Minutes'); ?></label><input type="number" min="1" max="240" class="form-control form-control-sm" id="mi<?php echo attr((string)$e->id); ?>" name="minutes"></div>
+                        <div class="form-group col-md-5"><label class="small" for="wd<?php echo attr((string)$e->id); ?>"><?php echo xlt('What was done'); ?></label><input class="form-control form-control-sm" id="wd<?php echo attr((string)$e->id); ?>" name="activity" maxlength="1000"></div>
                         <?php if ($userId === $e->practitionerId && !in_array($e->service, [Service::BHI, Service::COCM], true)) { ?>
                             <div class="form-group col-md-2 form-check"><input class="form-check-input" type="checkbox" name="as_practitioner" value="1" id="ap<?php echo attr((string)$e->id); ?>">
                                 <label class="form-check-label small" for="ap<?php echo attr((string)$e->id); ?>"><?php echo xlt('I did this myself'); ?></label></div>

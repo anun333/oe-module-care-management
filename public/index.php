@@ -30,6 +30,7 @@ use OpenHealthcare\CareManagement\Guide;
 use OpenHealthcare\CareManagement\Labels;
 use OpenHealthcare\CareManagement\Repository\EnrollmentRepository;
 use OpenHealthcare\CareManagement\Repository\MonthLines;
+use OpenHealthcare\CareManagement\Page;
 use OpenHealthcare\Common\OpenEmr;
 
 // Many patients' care on one page: the same check as the Staff Worklist.
@@ -88,8 +89,7 @@ if ($csv) {
 $moduleUrl = OpenEmr::webRoot() . Bootstrap::MODULE_INSTALLATION_PATH . '/public/';
 ?>
 <!DOCTYPE html>
-<?php // The module's own text is written in English. ?>
-<html lang="en">
+<html lang="<?php echo attr(Page::lang()); ?>" dir="<?php echo attr(Page::dir()); ?>">
 <head>
     <title><?php echo xlt('Care Management'); ?></title>
     <?php Header::setupHeader(); ?>

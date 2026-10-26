@@ -20,7 +20,8 @@ final class Enrollment
     /**
      * @param list<string> $conditions the problems managed, as their codes or titles
      * @param bool         $consentComplete the patient was told all four things CMS lists, and agreed
-     * @param bool         $initiatingNeeded no visit in the year before the start, so an initiating visit is needed
+     * @param bool         $initiatingNeeded not seen by the billing practitioner within the service's look-back before the start
+     *                                     (Service::initiatingLookBack), so an initiating visit is needed
      * @param bool         $qmb a Qualified Medicare Beneficiary (APCM's G0558)
      */
     public function __construct(

@@ -7,9 +7,11 @@ Monthly care management for OpenEMR: enroll a patient with the consent CMS requi
 
 It bills nothing: staff add the codes on a fee sheet, as for any other service. From 0.3.0 it checks what they billed against the time logged.
 
-> **Status: 0.3.8, a pre-release. This module needs OpenEMR 8.1.0 or later and PHP 8.2 or later; on an older OpenEMR it stays switched off.** Tested on OpenEMR 8.4.1 with synthetic data only. The codes and rules are as read from CMS's documents on 2026-10-18; check them with your billing staff and payer before billing.
+> **Status: 0.3.9, a pre-release. This module needs OpenEMR 8.1.0 or later and PHP 8.2 or later; on an older OpenEMR it stays switched off.** Tested on OpenEMR 8.4.1 with synthetic data only. The codes and rules are as read from CMS's documents on 2026-10-18; check them with your billing staff and payer before billing.
 
 What installing it changes in your database, what it reads and writes, and what it hooks into are listed in [FOOTPRINT.md](FOOTPRINT.md), generated from the source.
+
+Each page declares the signed-in user's OpenEMR language and writing direction (0.3.9), so a screen reader reads a translated page in its own language.
 
 Using the module day to day, task by task for each role: see [GUIDE.md](GUIDE.md).
 
@@ -59,9 +61,12 @@ Time is counted per calendar month and never carries over.
   - that only one practitioner can furnish and bill it in a calendar month;
   - that they can stop, effective at the end of the month.
 - **Too few conditions:** two for CCM, one for PCM, BHI and CoCM. APCM's code follows the number of conditions instead.
-- **No initiating visit,** when the patient wasn't seen recently enough before the enrollment started, and none is recorded:
-  - **APCM:** no visit with the billing practitioner in the 3 years before. CMS's APCM FAQ: "All new patients and those who have not been seen by the billing practitioner within 3 years require an initiating visit." This is worked out each time the page is read, so enrollments saved by 0.3.7 and earlier, which looked back one year at anyone's visits, read right too.
-  - **CCM, PCM, BHI and CoCM:** no visit in the year before, with anyone (MLN909188 for CCM: "patients who you haven't seen within the previous 1 year"; the BHI FAQ: "not seen within a year of commencement of BHI services").
+- **No initiating visit,** when the billing practitioner hadn't seen the patient recently enough before the enrollment started, and none is recorded. Only a visit with the billing practitioner counts:
+  - **APCM:** none in the 3 years before. CMS's APCM FAQ: "All new patients and those who have not been seen by the billing practitioner within 3 years require an initiating visit."
+  - **CCM and PCM:** none in the year before. MLN909188, addressed to the billing practitioner: "an initiating visit for new patients or patients who you haven't seen within the previous 1 year."
+  - **BHI and CoCM:** none in the year before. The BHI FAQ: "not seen within a year of commencement of BHI services"; MLN909432: the initiating visit "establishes the patient's relationship with the billing practitioner and makes sure the billing practitioner assesses the patient before starting BHI services."
+
+  This is worked out each time the page is read, so enrollments saved earlier read right too: before 0.3.9 a visit with anyone counted for all but APCM, and before 0.3.8 APCM looked back one year.
 
   For practices billing under the fee schedule, CMS's booklet says CCM must have been discussed at that visit. Its RHC/FQHC manual says it need not have been.
 - **CCM and PCM by the same practitioner** in the same month. A different practitioner may bill PCM for another condition.
@@ -100,6 +105,8 @@ composer require anun333/oe-module-care-management
 
 Then in OpenEMR, Modules › Manage Modules: Register, Install and Enable **Care Management**.
 
+Copying the module in by hand instead, with its own `vendor` folder: every module installed that way must carry the same version of the shared library, openhealthcare-common, because the first copy OpenEMR loads serves every module. Composer keeps one copy for all of them, so this only matters for a manual install. (A page that finds an older copy loaded first still opens, in English.)
+
 ## Compatibility
 
 **PHP security.** PHP's php2shell advisory (2026-10-21; CVE-2026-109618 and CVE-2026-109619) is remote code execution without logging in, and it is being exploited. Run OpenEMR on PHP 8.2.35, 8.3.36, 8.4.27, 8.5.12 or later, whatever the module needs. The official OpenEMR 7.0.2 and 7.0.3 Docker images can't get that fix: they carry PHP 8.2.16 and 8.3.15 on Alpine releases that no longer get updates. Run 7.0 only on a patched PHP, or upgrade OpenEMR. OpenEMR rebuilt its 8.4.1, 8.3.0, 8.2.0 and 8.0.0.3 images with the fix on 2026-10-22 (forum t/27157); a container started before then needs pulling again.
@@ -118,7 +125,7 @@ Tested with synthetic data on OpenEMR 8.4.1 (Docker image `openemr/openemr:8.4.1
 - removes entries;
 - removes everything.
 
-The same check passes on current master (8.5.0-dev, 1faefbbeb9, 2026-10-18). It uses OpenEMR features present since 8.1.0. It installs and its pages load on 8.1.0 and 8.3.0 (above); the full end-to-end check runs on 8.4.1 and master. It needs PHP 8.3 or later.
+The same check passes on current master (8.5.0-dev, 1faefbbeb9, 2026-10-18). It uses OpenEMR features present since 8.1.0. It installs and its pages load on 8.1.0 and 8.3.0 (above); the full end-to-end check runs on 8.4.1 and master. It needs PHP 8.2 or later.
 
 ## Development
 
@@ -133,7 +140,7 @@ The unit tests need no database or OpenEMR install. CI runs them, and the footpr
 
 ## CPT
 
-CPT is a registered trademark of the American Medical Association. The CPT numbers the module names, and the minutes CMS sets for each, are in [data/codes.json](data/codes.json) with this notice; no CPT descriptor is reproduced, and the labels there are ours (CC0). HCPCS Level II codes are published by CMS. The patient page and the month list show the notice.
+CPT is a registered trademark of the American Medical Association. The CPT numbers the module names, and the minutes CMS sets for each, are in [data/codes.json](data/codes.json) with this notice; no CPT descriptor is reproduced, and the labels there are ours (CC0, [LICENSES/CC0-1.0.txt](LICENSES/CC0-1.0.txt)). HCPCS Level II codes are published by CMS. The patient page and the month list show the notice.
 
 ## Sources
 
@@ -159,4 +166,4 @@ From the same project. Each installs with `composer require anun333/<module>` an
 
 ## License
 
-GPL-3.0-or-later. See [LICENSE](LICENSE).
+The code is GPL-3.0-or-later. See [LICENSE](LICENSE). The labels in [data/codes.json](data/codes.json) are dedicated to the public domain under CC0 1.0 ([LICENSES/CC0-1.0.txt](LICENSES/CC0-1.0.txt)); the CPT numbers keep the AMA's terms.

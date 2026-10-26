@@ -21,21 +21,28 @@ use PHPUnit\Framework\TestCase;
 
 final class ServiceTest extends TestCase
 {
-    public function testApcmLooksBackThreeYearsAtTheBillingPractitionersVisits(): void
+    public function testEveryServiceLooksBackAtTheBillingPractitionersOwnVisits(): void
     {
         self::assertSame(['years' => 3, 'byPractitioner' => true], Service::initiatingLookBack(Service::APCM), 'APCM FAQ, question 1');
+        // MLN909188 for CCM (PCM follows it), MLN909432 for BHI and CoCM: a visit with another practitioner doesn't count.
         foreach ([Service::CCM, Service::PCM, Service::BHI, Service::COCM] as $service) {
-            self::assertSame(['years' => 1, 'byPractitioner' => false], Service::initiatingLookBack($service), $service);
+            self::assertSame(['years' => 1, 'byPractitioner' => true], Service::initiatingLookBack($service), $service);
         }
     }
 
-    public function testApcmsNeedIsWorkedOutOnReadUnderItsOwnRule(): void
+    public function testEachServicesNeedIsWorkedOutOnReadUnderItsOwnRule(): void
     {
         $columns = EnrollmentRepository::columns();
-        self::assertStringContainsString("IF(`service` = 'apcm', NOT EXISTS (", $columns);
-        self::assertStringContainsString('INTERVAL 3 YEAR', $columns);
-        self::assertStringContainsString('fe.`provider_id` = `care_mgmt_enrollment`.`practitioner_id`', $columns, "the billing practitioner's visits only");
-        self::assertStringEndsWith('`initiating_needed`) AS `initiating_needed`', $columns, 'the other services keep what was stored');
+        $practitioners = 'fe.`provider_id` = `care_mgmt_enrollment`.`practitioner_id`';
+        foreach (Service::ALL as $service) {
+            $years = $service === Service::APCM ? 3 : 1;
+            self::assertMatchesRegularExpression(
+                "/WHEN '$service' THEN NOT EXISTS \\(SELECT 1 FROM `form_encounter` AS fe WHERE [^)]*" . preg_quote($practitioners, '/') . "[^)]*INTERVAL $years YEAR\\)/",
+                $columns,
+                "$service: the billing practitioner's visits in the last $years year(s), whatever was stored at enrollment",
+            );
+        }
+        self::assertStringEndsWith('ELSE `initiating_needed` END AS `initiating_needed`', $columns, 'what was stored, only for a service not known');
     }
 
     public function testEveryCodeComesFromTheDataFileWithALabelAndTheCptNotice(): void

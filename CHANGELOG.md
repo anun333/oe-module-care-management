@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.9 (unreleased)
+
+- **Changed: only a visit with the billing practitioner spares an initiating visit, for every service.** MLN909188 asks for one for "patients who you haven't seen within the previous 1 year", addressed to the billing practitioner, and MLN909432 says the BHI initiating visit "establishes the patient's relationship with the billing practitioner". CCM, PCM, BHI and CoCM counted a visit with anyone; they now count only the billing practitioner's, as APCM has since 0.3.8. This is worked out each time a page is read, so a month of an enrollment saved earlier, whose patient was seen only by someone else, now shows **No initiating visit recorded** until one is entered.
+- **The consent method shows in the user's language** (Verbal or Written) instead of the stored word.
+- **The enrollment and time forms' labels are tied to their fields,** so a screen reader names each one: the consent date, how consent was given, the initiating visit, and the time log's date, minutes and what was done.
+- **A missing patient shows its message inside the page,** with its title and language, instead of a bare line of text.
+- **Each page declares the signed-in user's OpenEMR language and direction** (openhealthcare-common 1.4.0's `pageLang()`), instead of always English. The call is guarded: where a site's other modules load an older copy of the shared library first, the page says English, as before, rather than stop. The module now requires openhealthcare-common ^1.4.0.
+- **The dashboard card's button is checked as a guide label directly** (the shared library now reads Twig's `|xlt`), so composer.json no longer names it.
+- **Licences and install notes:** the CC0 text the README points to is shipped in [LICENSES/CC0-1.0.txt](LICENSES/CC0-1.0.txt); the README's compatibility line says PHP 8.2, as 0.3.8 made it; on a manual install, every module's copy of the shared library must be the same version, since the first one loaded serves all.
+- **Checked:** the look-back for every service, its on-read rule, the labels and the language guard (with an older library) are unit tests that fail on 0.3.8's code; all pass on PHP 8.2 and 8.5. End to end on OpenEMR 8.4.1 (`dev/care_management_check.py`), on synthetic data: a CCM billed by someone other than the practitioner who saw the patient, and a CoCM, need an initiating visit even when the enrollment stored otherwise; one recorded clears it; a CCM by the practitioner who saw the patient needs none; the consent shows as Verbal; a missing patient gets the page's message.
+
 ## 0.3.8 (2026-10-26)
 
 - **Fixed: APCM months for patients last seen one to three years ago were blocked for no initiating visit.** CMS's APCM FAQ: "All new patients and those who have not been seen by the billing practitioner within 3 years require an initiating visit." The module looked back one year, at anyone's visits, as it does for CCM. APCM now looks back 3 years at the billing practitioner's own visits, and works this out on read, so enrollments saved earlier read right too. CCM, PCM, BHI and CoCM keep their one year (MLN909188; the BHI FAQ of 2023-12-05). A patient seen in the last year only by someone other than the APCM practitioner now needs an initiating visit, as the FAQ says.

@@ -159,21 +159,25 @@ final class Service
 
     /**
      * How far back a visit spares the patient an initiating visit, and whether it has to be
-     * the billing practitioner's own:
-     *  - APCM: 3 years, the billing practitioner's ("All new patients and those who have not
-     *    been seen by the billing practitioner within 3 years require an initiating visit",
-     *    CMS's APCM FAQ, question 1);
+     * the billing practitioner's own. For every service it does (0.3.9; before, a visit with
+     * any practitioner counted for all but APCM):
+     *  - APCM: 3 years ("All new patients and those who have not been seen by the billing
+     *    practitioner within 3 years require an initiating visit", CMS's APCM FAQ, question 1);
      *  - CCM: 1 year ("an initiating visit for new patients or patients who you haven't seen
-     *    within the previous 1 year", MLN909188), any practitioner's, as before;
+     *    within the previous 1 year", MLN909188, June 2025, whose "you" is the billing
+     *    practitioner);
      *  - BHI and CoCM: 1 year ("only required for new patients or patients not seen within a
-     *    year of commencement of BHI services", CMS's BHI FAQ of 2023-12-05, questions 17-18);
-     *  - PCM: 1 year, as CCM.
+     *    year of commencement of BHI services", CMS's BHI FAQ of 2023-12-05, questions 17-18),
+     *    by the billing practitioner (the initiating visit "establishes the patient's
+     *    relationship with the billing practitioner and makes sure the billing practitioner
+     *    assesses the patient before starting BHI services", MLN909432, January 2026);
+     *  - PCM: as CCM.
      *
      * @return array{years: int, byPractitioner: bool}
      */
     public static function initiatingLookBack(string $service): array
     {
-        return $service === self::APCM ? ['years' => 3, 'byPractitioner' => true] : ['years' => 1, 'byPractitioner' => false];
+        return ['years' => $service === self::APCM ? 3 : 1, 'byPractitioner' => true];
     }
 
     /** The fewest conditions a service needs. */

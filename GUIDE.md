@@ -21,7 +21,7 @@ The module bills nothing. It records enrollment, consent and time, shows each mo
 *Where:* the patient's Care Management page, under the service › **Record consent**.
 
 1. Enter the **Consent date**, and whether the **Consent was** **Written** or **Verbal**.
-2. If the patient is new or wasn't seen in the year before, enter the **Initiating visit, if needed**. For APCM the window is three years, and only a visit with the billing practitioner counts.
+2. If the billing practitioner hasn't seen the patient in the year before, enter the **Initiating visit, if needed**. Only a visit with the billing practitioner counts, for every service. For APCM the window is three years.
 3. Tick each thing the patient was told. CMS requires the first four, and for BHI and CoCM the fifth as well.
 4. Choose **Save consent**.
 

@@ -69,7 +69,7 @@ final class Labels
         return match ($blocker) {
             MonthRules::NO_CONSENT => xl('Consent is not recorded with everything the patient must be told'),
             MonthRules::TOO_FEW_CONDITIONS => xl('Too few conditions: CCM needs two or more chronic conditions; PCM, BHI and CoCM need the condition managed'),
-            MonthRules::NO_INITIATING_VISIT => xl('No initiating visit recorded: needed for a new patient, or one not seen in the year before (for APCM, not seen by the billing practitioner in three years)'),
+            MonthRules::NO_INITIATING_VISIT => xl('No initiating visit recorded: needed for a new patient, or one the billing practitioner has not seen in the year before (for APCM, in three years)'),
             MonthRules::CCM_AND_PCM => xl('CCM and PCM cannot both be billed by the same practitioner in a month'),
             MonthRules::COCM_AND_BHI => xl('CoCM and general BHI cannot both be billed for the patient in a month'),
             MonthRules::APCM_AND_CCM_PCM => xl('APCM cannot be billed with CCM or PCM by the same practitioner in a month'),
