@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.8 (unreleased)
+## 0.3.8 (2026-10-26)
 
 - **Fixed: APCM months for patients last seen one to three years ago were blocked for no initiating visit.** CMS's APCM FAQ: "All new patients and those who have not been seen by the billing practitioner within 3 years require an initiating visit." The module looked back one year, at anyone's visits, as it does for CCM. APCM now looks back 3 years at the billing practitioner's own visits, and works this out on read, so enrollments saved earlier read right too. CCM, PCM, BHI and CoCM keep their one year (MLN909188; the BHI FAQ of 2023-12-05). A patient seen in the last year only by someone other than the APCM practitioner now needs an initiating visit, as the FAQ says.
 - **Fixed: a CoCM patient stopped and enrolled again within 6 months got the first month's code (99492) again.** The episode is the patient's (CY 2017 rule, 81 FR 80241): earlier CoCM time now counts under any of the patient's CoCM enrollments, so the new enrollment's month is a later one (99493).
