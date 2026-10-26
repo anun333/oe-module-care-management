@@ -7,7 +7,7 @@ Monthly care management for OpenEMR: enroll a patient with the consent CMS requi
 
 It bills nothing: staff add the codes on a fee sheet, as for any other service. From 0.3.0 it checks what they billed against the time logged.
 
-> **Status: 0.3.7, a pre-release. This module needs OpenEMR 8.1.0 or later; on an older release it stays switched off.** Tested on OpenEMR 8.4.1 with synthetic data only. The codes and rules are as read from CMS's documents on 2026-10-18; check them with your billing staff and payer before billing.
+> **Status: 0.3.8, a pre-release. This module needs OpenEMR 8.1.0 or later and PHP 8.2 or later; on an older OpenEMR it stays switched off.** Tested on OpenEMR 8.4.1 with synthetic data only. The codes and rules are as read from CMS's documents on 2026-10-18; check them with your billing staff and payer before billing.
 
 What installing it changes in your database, what it reads and writes, and what it hooks into are listed in [FOOTPRINT.md](FOOTPRINT.md), generated from the source.
 
@@ -47,7 +47,7 @@ Time is counted per calendar month and never carries over.
 - **Who can log practitioner time:** only the enrollment's billing practitioner, logging their own work. Anyone else's time is clinical staff time.
 - **Conservative where CMS is silent.** CMS's booklet and FAQ say "each additional 20 minutes" and give no monthly limit, so each add-on unit needs its full time, and 99439 is limited to two a month (CPT's limit, as most sources cite it). Check both with your payer.
 - **Complex CCM is a route of its own,** billed instead of 99490 or 99491 in that month. Only the billing practitioner can record the decision-making: CMS says it "cannot be subcontracted".
-- **CoCM's episode** starts with the first month of care manager time. A new one, with a new first month, starts after 6 calendar months without CoCM. CMS says only that "CPT time rules apply" and publishes no lower figures, so full minutes are used. Only the care manager's time is counted: CMS doesn't say the practitioner's own counts.
+- **CoCM's episode** is the patient's: it starts with the first month of care manager time, under any of the patient's CoCM enrollments, and a new one, with a new first month, starts only after 6 calendar months without CoCM. So a patient stopped and enrolled again within 6 months, with the same practitioner or another, continues the episode (0.3.8; before, each enrollment started its own). CMS says only that "CPT time rules apply" and publishes no lower figures, so full minutes are used. Only the care manager's time is counted: CMS doesn't say the practitioner's own counts.
 - **APCM's add-ons** are shown beside a CoCM or BHI enrollment with time logged that month, when the same practitioner bills APCM. Billed outside APCM, the time-based codes keep their time requirements.
 - **Alternatives:** when more than one route is met, the page lists them all and says to bill one.
 
@@ -59,7 +59,11 @@ Time is counted per calendar month and never carries over.
   - that only one practitioner can furnish and bill it in a calendar month;
   - that they can stop, effective at the end of the month.
 - **Too few conditions:** two for CCM, one for PCM, BHI and CoCM. APCM's code follows the number of conditions instead.
-- **No initiating visit,** when the patient had no visit in the year before the enrollment started. For practices billing under the fee schedule, CMS's booklet says CCM must have been discussed at that visit. Its RHC/FQHC manual says it need not have been.
+- **No initiating visit,** when the patient wasn't seen recently enough before the enrollment started, and none is recorded:
+  - **APCM:** no visit with the billing practitioner in the 3 years before. CMS's APCM FAQ: "All new patients and those who have not been seen by the billing practitioner within 3 years require an initiating visit." This is worked out each time the page is read, so enrollments saved by 0.3.7 and earlier, which looked back one year at anyone's visits, read right too.
+  - **CCM, PCM, BHI and CoCM:** no visit in the year before, with anyone (MLN909188 for CCM: "patients who you haven't seen within the previous 1 year"; the BHI FAQ: "not seen within a year of commencement of BHI services").
+
+  For practices billing under the fee schedule, CMS's booklet says CCM must have been discussed at that visit. Its RHC/FQHC manual says it need not have been.
 - **CCM and PCM by the same practitioner** in the same month. A different practitioner may bill PCM for another condition.
 - **CoCM and general BHI** for the same patient in the same month, whoever bills them.
 - **APCM and CCM or PCM by the same practitioner** in the same month (CY 2025 PFS rule, Table 26). The same table also bars TCM, interprofessional consultations, virtual check-ins and e-visits by that practitioner; the module doesn't track those, so check them on the fee sheet.
@@ -125,7 +129,11 @@ php tools/footprint.php          # regenerate FOOTPRINT.md after changing the mo
 php tools/footprint.php --check  # what CI runs
 ```
 
-The unit tests need no database or OpenEMR install. CI runs them, and the footprint check, on PHP 8.3, 8.4 and 8.5.
+The unit tests need no database or OpenEMR install. CI runs them, and the footprint check, on PHP 8.2, 8.3, 8.4 and 8.5.
+
+## CPT
+
+CPT is a registered trademark of the American Medical Association. The CPT numbers the module names, and the minutes CMS sets for each, are in [data/codes.json](data/codes.json) with this notice; no CPT descriptor is reproduced, and the labels there are ours (CC0). HCPCS Level II codes are published by CMS. The patient page and the month list show the notice.
 
 ## Sources
 

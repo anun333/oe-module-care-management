@@ -47,11 +47,6 @@ final class Service
     public const APCM_CODE = 'apcm_code';
     public const ADD_ON = 'add_on';
 
-    public const COMPLEX_CCM = ['base' => '99487', 'first' => 60, 'addOn' => '99489', 'each' => 30];
-    public const COCM_FIRST_MONTH = ['base' => '99492', 'first' => 70];
-    public const COCM_LATER_MONTH = ['base' => '99493', 'first' => 60];
-    public const COCM_ADD_ON = ['code' => '99494', 'each' => 30];
-    public const COCM_SHORT = ['code' => 'G2214', 'first' => 30];
     /** Months without CoCM after which a new episode, and a new first month, begins. */
     public const COCM_NEW_EPISODE_MONTHS = 6;
 
@@ -61,29 +56,51 @@ final class Service
     /**
      * The routes a month's time can be billed by: for clinical staff time and for the billing
      * practitioner's own. first = minutes for the base code; each = minutes per add-on unit;
-     * max = most add-on units a month (null: none stated); counts = whose minutes count.
+     * max = most add-on units a month (null: none stated); counts = whose minutes count. CCM's
+     * practitioner time counts toward the staff codes when it isn't used for 99491 (MLN909188).
+     * The codes and minutes are in data/codes.json, with the CPT notice.
      *
      * @return array<string, array{base: string, first: int, addOn: ?string, each: ?int, max: ?int, counts: list<string>}>
      */
     public static function routes(string $service): array
     {
         return match ($service) {
-            self::CCM => [
-                // Practitioner time counts toward the staff codes when it isn't used for 99491 (MLN909188).
-                self::STAFF => ['base' => '99490', 'first' => 20, 'addOn' => '99439', 'each' => 20, 'max' => 2, 'counts' => [self::STAFF, self::PRACTITIONER]],
-                self::PRACTITIONER => ['base' => '99491', 'first' => 30, 'addOn' => '99437', 'each' => 30, 'max' => null, 'counts' => [self::PRACTITIONER]],
-            ],
-            self::PCM => [
-                self::STAFF => ['base' => '99426', 'first' => 30, 'addOn' => '99427', 'each' => 30, 'max' => null, 'counts' => [self::STAFF]],
-                self::PRACTITIONER => ['base' => '99424', 'first' => 30, 'addOn' => '99425', 'each' => 30, 'max' => null, 'counts' => [self::PRACTITIONER]],
-            ],
-            self::BHI => [
-                self::STAFF => ['base' => '99484', 'first' => 20, 'addOn' => null, 'each' => null, 'max' => null, 'counts' => [self::STAFF]],
-            ],
+            self::CCM, self::PCM, self::BHI => self::data()['routes'][$service],
             // Both are worked out in MonthRules: CoCM's codes depend on the month of the episode, and APCM has no time.
             self::COCM, self::APCM => [],
             default => throw new \InvalidArgumentException("Unknown care management service $service"),
         };
+    }
+
+    /** @return array{base: string, first: int, addOn: string, each: int} complex CCM's codes and minutes */
+    public static function complexCcm(): array
+    {
+        return self::data()['complexCcm'];
+    }
+
+    /** @return array{base: string, first: int} CoCM's code and minutes in the first month of an episode, or in a later one */
+    public static function cocmMonth(bool $laterInEpisode): array
+    {
+        return self::data()['cocm'][$laterInEpisode ? 'laterMonth' : 'firstMonth'];
+    }
+
+    /** @return array{code: string, each: int} CoCM's add-on code and minutes per unit */
+    public static function cocmAddOn(): array
+    {
+        return self::data()['cocm']['addOn'];
+    }
+
+    /** @return array{code: string, first: int} CoCM's code when the month's threshold isn't met */
+    public static function cocmShort(): array
+    {
+        return self::data()['cocm']['short'];
+    }
+
+    /** The APCM add-on a CoCM or BHI enrollment carries: CoCM's by month of the episode, or general BHI's. */
+    public static function apcmAddOn(string $service, bool $laterInEpisode): string
+    {
+        $addOns = self::data()['apcmAddOns'];
+        return $service === self::BHI ? $addOns['bhi'] : $addOns[$laterInEpisode ? 'cocmLaterMonth' : 'cocmFirstMonth'];
     }
 
     /**
@@ -103,9 +120,10 @@ final class Service
             }
         }
         $more = match ($service) {
-            self::CCM => [self::COMPLEX_CCM['base'], self::COMPLEX_CCM['addOn']],
-            self::BHI => ['G0570'],
-            self::COCM => [self::COCM_FIRST_MONTH['base'], self::COCM_LATER_MONTH['base'], self::COCM_ADD_ON['code'], self::COCM_SHORT['code'], 'G0568', 'G0569'],
+            self::CCM => [self::complexCcm()['base'], self::complexCcm()['addOn']],
+            self::BHI => [self::apcmAddOn(self::BHI, false)],
+            self::COCM => [self::cocmMonth(false)['base'], self::cocmMonth(true)['base'], self::cocmAddOn()['code'], self::cocmShort()['code'],
+                self::apcmAddOn(self::COCM, false), self::apcmAddOn(self::COCM, true)],
             self::APCM => [self::apcmCode(1, false), self::apcmCode(2, false), self::apcmCode(2, true)],
             default => [],
         };
@@ -115,10 +133,47 @@ final class Service
     /** The APCM code for a patient: by the chronic conditions managed, and whether they are a Qualified Medicare Beneficiary. */
     public static function apcmCode(int $conditions, bool $qmb): string
     {
+        $codes = self::data()['apcm'];
         if ($conditions >= 2) {
-            return $qmb ? 'G0558' : 'G0557';
+            return $qmb ? $codes['qmbTwoOrMore'] : $codes['twoOrMore'];
         }
-        return 'G0556';
+        return $codes['oneOrNone'];
+    }
+
+    /** The CPT notice that goes wherever the module shows CPT numbers. */
+    public static function cptNotice(): string
+    {
+        return self::data()['terms'];
+    }
+
+    /**
+     * data/codes.json, read once.
+     *
+     * @return array<string, mixed>
+     */
+    private static function data(): array
+    {
+        static $data = null;
+        return $data ??= json_decode((string)file_get_contents(dirname(__DIR__, 2) . '/data/codes.json'), true, 512, JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * How far back a visit spares the patient an initiating visit, and whether it has to be
+     * the billing practitioner's own:
+     *  - APCM: 3 years, the billing practitioner's ("All new patients and those who have not
+     *    been seen by the billing practitioner within 3 years require an initiating visit",
+     *    CMS's APCM FAQ, question 1);
+     *  - CCM: 1 year ("an initiating visit for new patients or patients who you haven't seen
+     *    within the previous 1 year", MLN909188), any practitioner's, as before;
+     *  - BHI and CoCM: 1 year ("only required for new patients or patients not seen within a
+     *    year of commencement of BHI services", CMS's BHI FAQ of 2023-12-05, questions 17-18);
+     *  - PCM: 1 year, as CCM.
+     *
+     * @return array{years: int, byPractitioner: bool}
+     */
+    public static function initiatingLookBack(string $service): array
+    {
+        return $service === self::APCM ? ['years' => 3, 'byPractitioner' => true] : ['years' => 1, 'byPractitioner' => false];
     }
 
     /** The fewest conditions a service needs. */

@@ -23,14 +23,29 @@ use OpenHealthcare\CareManagement\Domain\Month;
 final class EnrollmentRepository
 {
     private const COLUMNS = '`id`, `pid`, `service`, `practitioner_id`, `conditions_json`, `consent_on`, `consent_how`, `consent_explained`,
-        `consent_by`, `initiating_needed`, `initiating_visit_on`, `started_on`, `stopped_on`, `note`, `qmb`';
+        `consent_by`, `initiating_visit_on`, `started_on`, `stopped_on`, `note`, `qmb`';
+
+    /**
+     * The columns read, with whether an initiating visit is needed. APCM's is worked out on
+     * read, under its 3-year rule (Service::initiatingLookBack), so enrollments saved under
+     * 0.3.7's 1-year rule read right too; the other services keep what was stored at enrollment.
+     */
+    public static function columns(): string
+    {
+        $apcm = Service::initiatingLookBack(Service::APCM);
+        $seen = 'SELECT 1 FROM `form_encounter` AS fe WHERE fe.`pid` = `care_mgmt_enrollment`.`pid`'
+            . ' AND fe.`provider_id` = `care_mgmt_enrollment`.`practitioner_id`'
+            . ' AND fe.`date` < `care_mgmt_enrollment`.`started_on`'
+            . ' AND fe.`date` >= DATE_SUB(`care_mgmt_enrollment`.`started_on`, INTERVAL ' . (int)$apcm['years'] . ' YEAR)';
+        return self::COLUMNS . ", IF(`service` = '" . Service::APCM . "', NOT EXISTS ($seen), `initiating_needed`) AS `initiating_needed`";
+    }
 
     /** @return list<Enrollment> newest first */
     public function forPatient(int $pid): array
     {
         return array_map(
             self::enrollment(...),
-            QueryUtils::fetchRecords('SELECT ' . self::COLUMNS . ' FROM `care_mgmt_enrollment` WHERE `pid` = ? ORDER BY `started_on` DESC, `id` DESC', [$pid]),
+            QueryUtils::fetchRecords('SELECT ' . self::columns() . ' FROM `care_mgmt_enrollment` WHERE `pid` = ? ORDER BY `started_on` DESC, `id` DESC', [$pid]),
         );
     }
 
@@ -38,7 +53,7 @@ final class EnrollmentRepository
     public function activeIn(Month $month): array
     {
         $rows = QueryUtils::fetchRecords(
-            'SELECT ' . self::COLUMNS . ' FROM `care_mgmt_enrollment`
+            'SELECT ' . self::columns() . ' FROM `care_mgmt_enrollment`
               WHERE `started_on` <= ? AND (`stopped_on` IS NULL OR `stopped_on` >= ?) ORDER BY `pid`, `id`',
             [$month->last()->format('Y-m-d'), $month->first()->format('Y-m-d')],
         );
@@ -70,7 +85,7 @@ final class EnrollmentRepository
                  `consent_by`, `initiating_needed`, `initiating_visit_on`, `started_on`, `note`, `created_by`, `qmb`)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [$pid, $service, $practitionerId, json_encode($conditions, JSON_THROW_ON_ERROR), $consentOn, $consentHow, $explained ? 1 : 0,
-                $consentOn === null ? null : $userId, $this->seenInYearBefore($pid, $startedOn) ? 0 : 1, $initiatingVisitOn, $startedOn, $note, $userId,
+                $consentOn === null ? null : $userId, $this->seenBefore($pid, $startedOn, $service, $practitionerId) ? 0 : 1, $initiatingVisitOn, $startedOn, $note, $userId,
                 $service === Service::APCM && $qmb ? 1 : 0],
         );
     }
@@ -120,13 +135,21 @@ final class EnrollmentRepository
         return $out;
     }
 
-    /** Whether the patient had a visit in the year before a date: if not, an initiating visit is needed. */
-    private function seenInYearBefore(int $pid, string $day): bool
+    /**
+     * Whether the patient was seen recently enough before a date that the service needs no
+     * initiating visit: within its look-back, and by the billing practitioner where the
+     * service says so (Service::initiatingLookBack).
+     */
+    private function seenBefore(int $pid, string $day, string $service, int $practitionerId): bool
     {
-        $row = QueryUtils::fetchRecords(
-            'SELECT COUNT(*) AS n FROM `form_encounter` WHERE `pid` = ? AND `date` < ? AND `date` >= DATE_SUB(?, INTERVAL 1 YEAR)',
-            [$pid, $day, $day],
-        )[0] ?? ['n' => 0];
+        $rule = Service::initiatingLookBack($service);
+        $sql = 'SELECT COUNT(*) AS n FROM `form_encounter` WHERE `pid` = ? AND `date` < ? AND `date` >= DATE_SUB(?, INTERVAL ' . (int)$rule['years'] . ' YEAR)';
+        $binds = [$pid, $day, $day];
+        if ($rule['byPractitioner']) {
+            $sql .= ' AND `provider_id` = ?';
+            $binds[] = $practitionerId;
+        }
+        $row = QueryUtils::fetchRecords($sql, $binds)[0] ?? ['n' => 0];
         return (int)$row['n'] > 0;
     }
 

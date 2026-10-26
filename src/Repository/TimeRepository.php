@@ -54,11 +54,14 @@ final class TimeRepository
     }
 
     /**
-     * Which of these enrollments had time in the calendar months just before this one, up to
-     * Service::COCM_NEW_EPISODE_MONTHS: for CoCM, a month in an episode already under way.
+     * Which of these CoCM enrollments fall in an episode already under way: the patient had
+     * CoCM time, under any of their CoCM enrollments, in the calendar months just before this
+     * one, up to Service::COCM_NEW_EPISODE_MONTHS. The episode is the patient's, not the
+     * enrollment's, so a patient stopped and enrolled again within 6 months doesn't start a new
+     * one (CY 2017 PFS rule, 81 FR 80241). Other services' enrollments are always false.
      *
      * @param list<int> $enrollmentIds
-     * @return array<int, bool> enrollment id => had time
+     * @return array<int, bool> enrollment id => in an episode under way
      */
     public function hadTimeBefore(array $enrollmentIds, Month $month): array
     {
@@ -67,13 +70,15 @@ final class TimeRepository
         }
         $from = $month->first()->modify('-' . Service::COCM_NEW_EPISODE_MONTHS . ' months')->format('Y-m-d');
         $rows = QueryUtils::fetchRecords(
-            'SELECT DISTINCT `enrollment_id` FROM `care_mgmt_time` WHERE `removed_at` IS NULL AND `served_on` >= ? AND `served_on` < ?
-               AND `enrollment_id` IN (' . implode(', ', array_fill(0, count($enrollmentIds), '?')) . ')',
-            [$from, $month->first()->format('Y-m-d'), ...$enrollmentIds],
+            'SELECT DISTINCT e.`id` FROM `care_mgmt_enrollment` AS e
+               JOIN `care_mgmt_time` AS t ON t.`pid` = e.`pid` AND t.`removed_at` IS NULL AND t.`served_on` >= ? AND t.`served_on` < ?
+               JOIN `care_mgmt_enrollment` AS earlier ON earlier.`id` = t.`enrollment_id` AND earlier.`service` = ?
+              WHERE e.`service` = ? AND e.`id` IN (' . implode(', ', array_fill(0, count($enrollmentIds), '?')) . ')',
+            [$from, $month->first()->format('Y-m-d'), Service::COCM, Service::COCM, ...$enrollmentIds],
         );
         $out = array_fill_keys($enrollmentIds, false);
         foreach ($rows as $r) {
-            $out[(int)$r['enrollment_id']] = true;
+            $out[(int)$r['id']] = true;
         }
         return $out;
     }

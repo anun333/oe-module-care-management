@@ -146,6 +146,7 @@ $moduleUrl = OpenEmr::webRoot() . Bootstrap::MODULE_INSTALLATION_PATH . '/public
         <?php if ($lines === []) { ?><tr><td colspan="<?php echo $seesBilling ? '8' : '7'; ?>" class="text-muted"><?php echo xlt('No enrollments active this month.'); ?></td></tr><?php } ?>
         </tbody>
     </table>
+    <p class="small text-muted mt-3 mb-1"><?php echo text(Service::cptNotice()); ?></p>
 </div>
 </body>
 </html>

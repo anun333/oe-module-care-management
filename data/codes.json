@@ -1,0 +1,49 @@
+{
+ "about": "The codes Care Management's rules name, with the minutes CMS sets for each (MLN909188, MLN909432, the CCM and BHI FAQs, and the CY 2025-2026 physician fee schedule rules; see src/Domain/Service.php). CPT numbers only, with labels in our own words, never AMA's descriptions (Seth, 2026-10-24). HCPCS Level II codes are CMS's.",
+ "terms": "CPT is a registered trademark of the American Medical Association. No CPT descriptor is reproduced here; the labels are ours (CC0). HCPCS Level II codes are published by CMS.",
+ "routes": {
+  "ccm": {
+   "staff": {"base": "99490", "first": 20, "addOn": "99439", "each": 20, "max": 2, "counts": ["staff", "practitioner"]},
+   "practitioner": {"base": "99491", "first": 30, "addOn": "99437", "each": 30, "max": null, "counts": ["practitioner"]}
+  },
+  "pcm": {
+   "staff": {"base": "99426", "first": 30, "addOn": "99427", "each": 30, "max": null, "counts": ["staff"]},
+   "practitioner": {"base": "99424", "first": 30, "addOn": "99425", "each": 30, "max": null, "counts": ["practitioner"]}
+  },
+  "bhi": {
+   "staff": {"base": "99484", "first": 20, "addOn": null, "each": null, "max": null, "counts": ["staff"]}
+  }
+ },
+ "complexCcm": {"base": "99487", "first": 60, "addOn": "99489", "each": 30},
+ "cocm": {
+  "firstMonth": {"base": "99492", "first": 70},
+  "laterMonth": {"base": "99493", "first": 60},
+  "addOn": {"code": "99494", "each": 30},
+  "short": {"code": "G2214", "first": 30}
+ },
+ "apcm": {"oneOrNone": "G0556", "twoOrMore": "G0557", "qmbTwoOrMore": "G0558"},
+ "apcmAddOns": {"cocmFirstMonth": "G0568", "cocmLaterMonth": "G0569", "bhi": "G0570"},
+ "labels": {
+  "99490": "chronic care management by clinical staff, the first 20 minutes of a month",
+  "99439": "chronic care management by clinical staff, each further 20 minutes",
+  "99491": "chronic care management by the billing practitioner, the first 30 minutes",
+  "99437": "chronic care management by the billing practitioner, each further 30 minutes",
+  "99487": "complex chronic care management, the first 60 minutes",
+  "99489": "complex chronic care management, each further 30 minutes",
+  "99426": "principal care management by clinical staff, the first 30 minutes",
+  "99427": "principal care management by clinical staff, each further 30 minutes",
+  "99424": "principal care management by the billing practitioner, the first 30 minutes",
+  "99425": "principal care management by the billing practitioner, each further 30 minutes",
+  "99484": "general behavioral health integration, 20 minutes in a month",
+  "99492": "collaborative care, the first month of an episode",
+  "99493": "collaborative care, a later month of the episode",
+  "99494": "collaborative care, each further 30 minutes",
+  "G2214": "collaborative care, the first 30 minutes when the other code's time isn't met",
+  "G0556": "advanced primary care management, one chronic condition or none",
+  "G0557": "advanced primary care management, two or more chronic conditions",
+  "G0558": "advanced primary care management, a Qualified Medicare Beneficiary with two or more",
+  "G0568": "the collaborative care add-on to APCM, the first month",
+  "G0569": "the collaborative care add-on to APCM, a later month",
+  "G0570": "the general behavioral health integration add-on to APCM"
+ }
+}

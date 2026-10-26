@@ -93,7 +93,7 @@ final class MonthRules
             $nextCode[$route] = $r['base'];
         }
         if ($e->service === Service::CCM && $complexMdm) {
-            $c = Service::COMPLEX_CCM;
+            $c = Service::complexCcm();
             $time = $minutes[Service::STAFF] + $minutes[Service::PRACTITIONER];
             $routes[Service::COMPLEX] = $time >= $c['first'] ? array_values(array_filter([
                 ['code' => $c['base'], 'units' => 1],
@@ -105,16 +105,16 @@ final class MonthRules
         if ($e->service === Service::COCM) {
             // The care manager's time; CMS doesn't say the practitioner's own counts.
             $time = $minutes[Service::STAFF];
-            $base = $cocmEarlierInEpisode ? Service::COCM_LATER_MONTH : Service::COCM_FIRST_MONTH;
+            $base = Service::cocmMonth($cocmEarlierInEpisode);
             $codes = [];
             if ($time >= $base['first']) {
                 $codes[] = ['code' => $base['base'], 'units' => 1];
-                $units = intdiv($time - $base['first'], Service::COCM_ADD_ON['each']);
+                $units = intdiv($time - $base['first'], Service::cocmAddOn()['each']);
                 if ($units > 0) {
-                    $codes[] = ['code' => Service::COCM_ADD_ON['code'], 'units' => $units];
+                    $codes[] = ['code' => Service::cocmAddOn()['code'], 'units' => $units];
                 }
-            } elseif ($time >= Service::COCM_SHORT['first']) {
-                $codes[] = ['code' => Service::COCM_SHORT['code'], 'units' => 1];
+            } elseif ($time >= Service::cocmShort()['first']) {
+                $codes[] = ['code' => Service::cocmShort()['code'], 'units' => 1];
             }
             $routes[Service::STAFF] = $codes;
             $next[Service::STAFF] = max(0, $base['first'] - $time);
@@ -132,7 +132,7 @@ final class MonthRules
             $nextCode[Service::APCM_CODE] = $routes[Service::APCM_CODE][0]['code'];
         }
         if (in_array($e->service, [Service::COCM, Service::BHI], true) && $apcmBySamePractitioner && $minutes[Service::STAFF] + $minutes[Service::PRACTITIONER] > 0) {
-            $addOn = $e->service === Service::BHI ? 'G0570' : ($cocmEarlierInEpisode ? 'G0569' : 'G0568');
+            $addOn = Service::apcmAddOn($e->service, $cocmEarlierInEpisode);
             $routes[Service::ADD_ON] = [['code' => $addOn, 'units' => 1]];
             $next[Service::ADD_ON] = 0;
             $nextCode[Service::ADD_ON] = $addOn;
@@ -176,7 +176,7 @@ final class MonthRules
             'nextCode' => $nextCode,
             'threshold' => match (true) {
                 $e->service === Service::APCM => null,
-                $e->service === Service::COCM => ($cocmEarlierInEpisode ? Service::COCM_LATER_MONTH : Service::COCM_FIRST_MONTH)['first'],
+                $e->service === Service::COCM => Service::cocmMonth($cocmEarlierInEpisode)['first'],
                 default => Service::routes($e->service)[Service::STAFF]['first'],
             },
             'blockers' => $blockers,

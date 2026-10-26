@@ -21,7 +21,7 @@ The module bills nothing. It records enrollment, consent and time, shows each mo
 *Where:* the patient's Care Management page, under the service › **Record consent**.
 
 1. Enter the **Consent date**, and whether the **Consent was** **Written** or **Verbal**.
-2. If the patient is new or wasn't seen in the year before, enter the **Initiating visit, if needed**.
+2. If the patient is new or wasn't seen in the year before, enter the **Initiating visit, if needed**. For APCM the window is three years, and only a visit with the billing practitioner counts.
 3. Tick each thing the patient was told. CMS requires the first four, and for BHI and CoCM the fifth as well.
 4. Choose **Save consent**.
 
@@ -73,3 +73,5 @@ Tick the decision-making box and choose **Save**. Only the billing practitioner 
 ### Follow up from the Staff Worklist
 
 If the Staff Worklist module is installed, it has a **Care management, not billed** tab under **Billing practitioner**: each enrollment whose month, in the last three completed months, met a code that no fee sheet has billed. Its button opens the month list.
+
+CPT is a registered trademark of the American Medical Association. The module shows CPT numbers only, never AMA's descriptions.

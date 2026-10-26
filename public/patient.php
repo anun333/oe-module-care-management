@@ -331,6 +331,7 @@ $consentFields = static function (string $k) {
         <div class="form-group"><label for="note"><?php echo xlt('Note'); ?></label><input class="form-control form-control-sm" id="note" name="note" maxlength="500"></div>
         <button class="btn btn-sm btn-primary" type="submit"><?php echo xlt('Enroll'); ?></button>
     </form>
+    <p class="small text-muted mt-3 mb-1"><?php echo text(Service::cptNotice()); ?></p>
 </div>
 </body>
 </html>
