@@ -26,6 +26,7 @@ use OpenHealthcare\CareManagement\Bootstrap;
 use OpenHealthcare\CareManagement\Domain\BillingCheck;
 use OpenHealthcare\CareManagement\Domain\Month;
 use OpenHealthcare\CareManagement\Domain\Service;
+use OpenHealthcare\CareManagement\Guide;
 use OpenHealthcare\CareManagement\Labels;
 use OpenHealthcare\CareManagement\Repository\EnrollmentRepository;
 use OpenHealthcare\CareManagement\Repository\MonthLines;
@@ -97,6 +98,7 @@ $moduleUrl = OpenEmr::webRoot() . Bootstrap::MODULE_INSTALLATION_PATH . '/public
 <body class="body_top">
 <div class="container-fluid py-3">
     <h1 class="h4"><?php echo xlt('Care Management'); ?>: <?php echo text($month->key()); ?></h1>
+    <p class="small mb-2"><a href="<?php echo attr(Guide::url()); ?>" target="_blank" rel="noopener"><?php echo xlt('Help'); ?><span class="sr-only"> <?php echo xlt('(opens in a new window)'); ?></span></a></p>
     <p class="small text-muted"><?php echo xlt('Minutes are counted per calendar month and never carry over. Each add-on needs its full time, and CoCM its full minutes. APCM and its add-ons have no time requirement. Health centers bill these codes themselves, paid outside the PPS rate. This list bills nothing: add the codes on a fee sheet.'); ?>
         <?php if ($seesBilling) { ?><?php echo xlt('Billed compares the time logged with the care management codes on fee sheets for the encounters of this month.'); ?><?php } ?></p>
     <form method="get" class="form-inline mb-3">

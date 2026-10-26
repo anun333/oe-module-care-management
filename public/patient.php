@@ -27,6 +27,7 @@ use OpenHealthcare\CareManagement\Bootstrap;
 use OpenHealthcare\CareManagement\Domain\Month;
 use OpenHealthcare\CareManagement\Domain\MonthRules;
 use OpenHealthcare\CareManagement\Domain\Service;
+use OpenHealthcare\CareManagement\Guide;
 use OpenHealthcare\CareManagement\Labels;
 use OpenHealthcare\CareManagement\Repository\EnrollmentRepository;
 use OpenHealthcare\CareManagement\Repository\MonthRepository;
@@ -189,6 +190,7 @@ $consentFields = static function (string $k) {
 <div class="container-fluid py-3">
     <h1 class="h4"><?php echo xlt('Care Management'); ?>: <?php echo text(trim($patient['lname'] . ', ' . $patient['fname'], ', ')); ?>
         <small class="text-muted"><?php echo xlt('ID'); ?> <?php echo text((string)$patient['pubpid']); ?></small></h1>
+    <p class="small mb-2"><a href="<?php echo attr(Guide::url()); ?>" target="_blank" rel="noopener"><?php echo xlt('Help'); ?><span class="sr-only"> <?php echo xlt('(opens in a new window)'); ?></span></a></p>
     <?php if ($done !== '') { ?><div class="alert alert-success py-2"><?php echo text($done); ?></div><?php } ?>
     <?php foreach ($errors as $e) { ?><div class="alert alert-danger py-2"><?php echo text($e); ?></div><?php } ?>
 

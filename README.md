@@ -11,6 +11,8 @@ It bills nothing: staff add the codes on a fee sheet, as for any other service. 
 
 What installing it changes in your database, what it reads and writes, and what it hooks into are listed in [FOOTPRINT.md](FOOTPRINT.md), generated from the source.
 
+Using the module day to day, task by task for each role: see [GUIDE.md](GUIDE.md).
+
 ## What it does
 
 - **Care Management** (main menu): every enrollment active in a month, with the minutes logged, the codes they meet, and what blocks billing, with a CSV for billing staff.
