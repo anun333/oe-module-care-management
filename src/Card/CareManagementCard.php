@@ -17,7 +17,6 @@ declare(strict_types=1);
 namespace OpenHealthcare\CareManagement\Card;
 
 use OpenEMR\Common\Acl\AclMain;
-use OpenEMR\Core\OEGlobalsBag;
 use OpenEMR\Events\Patient\Summary\Card\CardModel;
 use OpenHealthcare\CareManagement\Bootstrap;
 use OpenHealthcare\CareManagement\Domain\Month;
@@ -26,6 +25,7 @@ use OpenHealthcare\CareManagement\Labels;
 use OpenHealthcare\CareManagement\Repository\EnrollmentRepository;
 use OpenHealthcare\CareManagement\Repository\MonthRepository;
 use OpenHealthcare\CareManagement\Repository\TimeRepository;
+use OpenHealthcare\Common\OpenEmr;
 
 final class CareManagementCard extends CardModel
 {
@@ -73,7 +73,7 @@ final class CareManagementCard extends CardModel
             'rows' => $rows,
             'month' => $month->key(),
             'url' => AclMain::aclCheckCore('patients', 'med', '', 'write')
-                ? OEGlobalsBag::getInstance()->getWebRoot() . Bootstrap::MODULE_INSTALLATION_PATH . '/public/patient.php?pid=' . $pid
+                ? OpenEmr::webRoot() . Bootstrap::MODULE_INSTALLATION_PATH . '/public/patient.php?pid=' . $pid
                 : '',
         ];
     }

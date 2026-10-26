@@ -22,7 +22,6 @@ use OpenEMR\Common\Database\QueryUtils;
 use OpenEMR\Common\Logging\EventAuditLogger;
 use OpenEMR\Common\Session\SessionWrapperFactory;
 use OpenEMR\Core\Header;
-use OpenEMR\Core\OEGlobalsBag;
 use OpenHealthcare\CareManagement\Bootstrap;
 use OpenHealthcare\CareManagement\Domain\BillingCheck;
 use OpenHealthcare\CareManagement\Domain\Month;
@@ -30,6 +29,7 @@ use OpenHealthcare\CareManagement\Domain\Service;
 use OpenHealthcare\CareManagement\Labels;
 use OpenHealthcare\CareManagement\Repository\EnrollmentRepository;
 use OpenHealthcare\CareManagement\Repository\MonthLines;
+use OpenHealthcare\Common\OpenEmr;
 
 // Many patients' care on one page: the same check as the Staff Worklist.
 if (!AclMain::aclCheckCore('patients', 'med')) {
@@ -84,7 +84,7 @@ if ($csv) {
     fclose($out);
     exit;
 }
-$moduleUrl = OEGlobalsBag::getInstance()->getWebRoot() . Bootstrap::MODULE_INSTALLATION_PATH . '/public/';
+$moduleUrl = OpenEmr::webRoot() . Bootstrap::MODULE_INSTALLATION_PATH . '/public/';
 ?>
 <!DOCTYPE html>
 <?php // The module's own text is written in English. ?>

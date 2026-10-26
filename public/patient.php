@@ -23,7 +23,6 @@ use OpenEMR\Common\Database\QueryUtils;
 use OpenEMR\Common\Logging\EventAuditLogger;
 use OpenEMR\Common\Session\SessionWrapperFactory;
 use OpenEMR\Core\Header;
-use OpenEMR\Core\OEGlobalsBag;
 use OpenHealthcare\CareManagement\Bootstrap;
 use OpenHealthcare\CareManagement\Domain\Month;
 use OpenHealthcare\CareManagement\Domain\MonthRules;
@@ -32,6 +31,7 @@ use OpenHealthcare\CareManagement\Labels;
 use OpenHealthcare\CareManagement\Repository\EnrollmentRepository;
 use OpenHealthcare\CareManagement\Repository\MonthRepository;
 use OpenHealthcare\CareManagement\Repository\TimeRepository;
+use OpenHealthcare\Common\OpenEmr;
 
 // Logging care is clinical documentation: the same check as the Staff Worklist's actions.
 if (!AclMain::aclCheckCore('patients', 'med', '', 'write')) {
@@ -158,7 +158,7 @@ $entries = $times->inMonth($month, [$pid]);
 $ids = array_map(static fn($e): int => $e->id, $list);
 $complex = (new MonthRepository())->complex($ids, $month);
 $earlier = $times->hadTimeBefore($ids, $month);
-$moduleUrl = OEGlobalsBag::getInstance()->getWebRoot() . Bootstrap::MODULE_INSTALLATION_PATH . '/public/';
+$moduleUrl = OpenEmr::webRoot() . Bootstrap::MODULE_INSTALLATION_PATH . '/public/';
 $token = CsrfUtils::collectCsrfToken(session: $session);
 $consentFields = static function (string $k) {
     ?>
