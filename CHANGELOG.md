@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.2 (unreleased)
+
+- **On OpenEMR older than 8.1.0, the module's pages say so instead of showing a blank page.** The module needs 8.1.0 or later and stays switched off below it, but a page opened from a bookmark or a typed address still ran and stopped with an empty HTTP 500. Each page now answers with a short page naming the version the module needs and the site's version (found installing every module on a fresh 7.0.2).
+
 ## 0.4.1 (2026-10-26)
 
 - **The Staff Worklist tab is built on openhealthcare-common's shared contract** (1.5.0), so it loads, and is tested, without the Worklist's classes. Staff see the same "Care management, not billed" tab with the same rows, on any Worklist from 0.8.0. The bootstrap also registers the library's contracts under their own prefix, so they load where a module copied in by hand carries an older copy that registered first; if no copy with the contracts is there at all, the tab is left out rather than stop the page.
