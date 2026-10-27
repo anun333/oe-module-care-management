@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.0 (unreleased)
+## 0.4.0 (2026-10-26)
 
 Released before the CY 2027 physician fee schedule final rule, which wasn't published on 2026-10-26 (the proposed rule is FR 2026-14327, 91 FR 43842). Everything here stands on 2026's rules; when the final rule is out, its 2027 entry is checked against it in a later release.
 
