@@ -22,6 +22,7 @@ use OpenHealthcare\CareManagement\Bootstrap;
 use OpenHealthcare\CareManagement\Domain\Month;
 use OpenHealthcare\CareManagement\Domain\MonthRules;
 use OpenHealthcare\CareManagement\Labels;
+use OpenHealthcare\CareManagement\Repository\DevicePeriodRepository;
 use OpenHealthcare\CareManagement\Repository\EnrollmentRepository;
 use OpenHealthcare\CareManagement\Repository\MonthRepository;
 use OpenHealthcare\CareManagement\Repository\TimeRepository;
@@ -54,19 +55,20 @@ final class CareManagementCard extends CardModel
         $ids = array_map(static fn($e): int => $e->id, $enrollments);
         $complex = (new MonthRepository())->complex($ids, $month);
         $earlier = $times->hadTimeBefore($ids, $month);
+        $periods = (new DevicePeriodRepository())->forPatients([$pid]);
         $rows = [];
         foreach ($enrollments as $e) {
             if (!$e->activeIn($month)) {
                 continue;
             }
-            $s = MonthRules::summarize($e, $entries, $enrollments, $month, $complex[$e->id] ?? false, $earlier[$e->id] ?? false);
+            $s = MonthRules::summarize($e, $entries, $enrollments, $month, $complex[$e->id] ?? false, $earlier[$e->id] ?? false, $periods);
             $rows[] = [
                 'service' => Labels::service($e->service),
                 'minutes' => $s['staff'] + $s['practitioner'],
                 'threshold' => $s['threshold'],
                 'codes' => implode(' / ', array_map(Labels::codes(...), array_values(array_filter($s['routes'])))),
                 'met' => array_filter($s['routes']) !== [],
-                'blockers' => array_map(Labels::blocker(...), $s['blockers']),
+                'blockers' => array_map(static fn(string $b): string => Labels::blocker($b, $e->service, $s['lookBack']), $s['blockers']),
             ];
         }
         return [

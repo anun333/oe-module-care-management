@@ -1,28 +1,98 @@
 {
- "about": "The codes Care Management's rules name, with the minutes CMS sets for each (MLN909188, MLN909432, the CCM and BHI FAQs, and the CY 2025-2026 physician fee schedule rules; see src/Domain/Service.php). CPT numbers only, with labels in our own words, never AMA's descriptions (Seth, 2026-10-24). HCPCS Level II codes are CMS's.",
+ "about": "The codes Care Management's rules name, by calendar year, with the minutes, days and rules CMS sets for each (see src/Domain/Schedule.php). A year's entry is \"final\" from the year's final rule, or \"proposed\" from its proposed rule, which the module doesn't use; \"from\" names the year it repeats except for \"changes\". CPT numbers only, with labels in our own words, never AMA's descriptions (Seth, 2026-10-24). HCPCS Level II codes are CMS's.",
  "terms": "CPT is a registered trademark of the American Medical Association. No CPT descriptor is reproduced here; the labels are ours (CC0). HCPCS Level II codes are published by CMS.",
- "routes": {
-  "ccm": {
-   "staff": {"base": "99490", "first": 20, "addOn": "99439", "each": 20, "max": 2, "counts": ["staff", "practitioner"]},
-   "practitioner": {"base": "99491", "first": 30, "addOn": "99437", "each": 30, "max": null, "counts": ["practitioner"]}
+ "years": {
+  "2026": {
+   "status": "final",
+   "source": "The CY 2026 physician fee schedule final rule (FR 2025-19787, 90 FR 49266, 2025-11-05) and the earlier rules and CMS documents it leaves standing: MLN909188 (June 2025), MLN909432 (January 2026), the CCM, BHI and APCM FAQs, the CY 2017, 2020, 2024 and 2025 rules, and the Medicare Claims Processing Manual, chapter 12.",
+   "routes": {
+    "ccm": {
+     "staff": {"base": "99490", "first": 20, "addOn": "99439", "each": 20, "max": 2, "counts": ["staff", "practitioner"]},
+     "practitioner": {"base": "99491", "first": 30, "addOn": "99437", "each": 30, "max": null, "counts": ["practitioner"]}
+    },
+    "pcm": {
+     "staff": {"base": "99426", "first": 30, "addOn": "99427", "each": 30, "max": null, "counts": ["staff"]},
+     "practitioner": {"base": "99424", "first": 30, "addOn": "99425", "each": 30, "max": null, "counts": ["practitioner"]}
+    },
+    "bhi": {
+     "staff": {"base": "99484", "first": 20, "addOn": null, "each": null, "max": null, "counts": ["staff"]}
+    }
+   },
+   "complexCcm": {"base": "99487", "first": 60, "addOn": "99489", "each": 30},
+   "cocm": {
+    "firstMonth": {"base": "99492", "first": 70},
+    "laterMonth": {"base": "99493", "first": 60},
+    "addOn": {"code": "99494", "each": 30},
+    "short": {"code": "G2214", "first": 30}
+   },
+   "apcm": {"oneOrNone": "G0556", "twoOrMore": "G0557", "qmbTwoOrMore": "G0558"},
+   "apcmAddOns": {"cocmFirstMonth": "G0568", "cocmLaterMonth": "G0569", "bhi": "G0570"},
+   "remote": {
+    "rpm": {
+     "setup": {"code": "99453", "days": 2},
+     "device": {
+      "any": {
+       "short": {"code": "99445", "days": 2},
+       "full": {"code": "99454", "days": 16}
+      }
+     },
+     "management": {
+      "base": "99457",
+      "first": 20,
+      "addOn": "99458",
+      "each": 20,
+      "short": {"code": "99470", "first": 10}
+     }
+    },
+    "rtm": {
+     "setup": {"code": "98975", "days": 2},
+     "device": {
+      "respiratory": {
+       "short": {"code": "98984", "days": 2},
+       "full": {"code": "98976", "days": 16}
+      },
+      "musculoskeletal": {
+       "short": {"code": "98985", "days": 2},
+       "full": {"code": "98977", "days": 16}
+      },
+      "cbt": {
+       "short": {"code": "98986", "days": 2},
+       "full": {"code": "98978", "days": 16}
+      }
+     },
+     "management": {
+      "base": "98980",
+      "first": 20,
+      "addOn": "98981",
+      "each": 20,
+      "short": {"code": "98979", "first": 10}
+     }
+    }
+   },
+   "rules": {
+    "lookBack": {"ccm": 1, "pcm": 1, "bhi": 1, "cocm": 1, "apcm": 3, "rpm": 3, "rtm": null},
+    "pcmRenewalMonths": 12
+   }
   },
-  "pcm": {
-   "staff": {"base": "99426", "first": 30, "addOn": "99427", "each": 30, "max": null, "counts": ["staff"]},
-   "practitioner": {"base": "99424", "first": 30, "addOn": "99425", "each": 30, "max": null, "counts": ["practitioner"]}
-  },
-  "bhi": {
-   "staff": {"base": "99484", "first": 20, "addOn": null, "each": null, "max": null, "counts": ["staff"]}
+  "2027": {
+   "status": "proposed",
+   "source": "The CY 2027 physician fee schedule proposed rule (FR 2026-14327, 91 FR 43842, 2026-07-16; comments closed 2026-09-14). Not final: the module never uses a proposed year (src/Domain/Schedule.php). This entry is checked against the final rule when it is published, and released with what it finalized.",
+   "from": "2026",
+   "changes": {
+    "rules": {
+     "lookBack": {"rpm": 0, "rtm": 0}
+    }
+   },
+   "notes": [
+    "RPM and RTM: \"practitioners reporting RPM or RTM services must furnish a separately reportable initiating visit in association with the onset of RPM or RTM services\", \"initiated by the billing practitioner during a face-to-face (in-person or telehealth) visit\" (91 FR 43892). A look-back of 0 years: every RPM or RTM enrollment needs its own initiating visit recorded.",
+    "RTM: \"we are proposing to require that RTM services also be furnished only to established patients\" (91 FR 43892). An initiating visit at the onset makes the patient established, so the look-back of 0 covers it.",
+    "RPM and RTM: \"We are proposing to only allow payment for RPM or RTM services when furnished by clinical staff employed by the practice\" (91 FR 43893). The record can't tell who employs a user, so nothing would be counted differently; if finalized, the guide and README say it.",
+    "RPM and RTM treatment management: the proposed rule removes the clinical staff inputs from 99470, 99457, 99458, 98979, 98980 and 98981's values (91 FR 43894): a change to what they pay, not to the minutes or who may log them.",
+    "Considered, with comment invited, not proposed: four G-codes in place of the 17 remote monitoring codes, GRPM1 and GRTM1 for set-up and GRPM2 and GRTM2 per calendar month with 2 or more days of data and at least 20 minutes of treatment management (91 FR 43894-95), and the same for RHCs and FQHCs.",
+    "CCM, PCM, BHI, CoCM, APCM and its add-ons: new values only; no code, minute or rule change. G2211 becomes a modifier and GACP1/GACP2 are new advance care planning codes; neither is a service this module counts."
+   ]
   }
  },
- "complexCcm": {"base": "99487", "first": 60, "addOn": "99489", "each": 30},
- "cocm": {
-  "firstMonth": {"base": "99492", "first": 70},
-  "laterMonth": {"base": "99493", "first": 60},
-  "addOn": {"code": "99494", "each": 30},
-  "short": {"code": "G2214", "first": 30}
- },
- "apcm": {"oneOrNone": "G0556", "twoOrMore": "G0557", "qmbTwoOrMore": "G0558"},
- "apcmAddOns": {"cocmFirstMonth": "G0568", "cocmLaterMonth": "G0569", "bhi": "G0570"},
  "labels": {
   "99490": "chronic care management by clinical staff, the first 20 minutes of a month",
   "99439": "chronic care management by clinical staff, each further 20 minutes",
@@ -44,6 +114,22 @@
   "G0558": "advanced primary care management, a Qualified Medicare Beneficiary with two or more",
   "G0568": "the collaborative care add-on to APCM, the first month",
   "G0569": "the collaborative care add-on to APCM, a later month",
-  "G0570": "the general behavioral health integration add-on to APCM"
+  "G0570": "the general behavioral health integration add-on to APCM",
+  "99453": "remote physiologic monitoring set-up and teaching the patient the device, once an episode",
+  "99454": "remote physiologic monitoring device and data, 16 or more days in 30",
+  "99445": "remote physiologic monitoring device and data, 2 to 15 days in 30",
+  "99457": "remote physiologic monitoring treatment management, the first 20 minutes of a month",
+  "99458": "remote physiologic monitoring treatment management, each further 20 minutes",
+  "99470": "remote physiologic monitoring treatment management, the first 10 minutes of a month",
+  "98975": "remote therapeutic monitoring set-up and teaching the patient the device, once an episode",
+  "98976": "remote therapeutic monitoring of breathing, device and data, 16 or more days in 30",
+  "98977": "remote therapeutic monitoring of muscles and joints, device and data, 16 or more days in 30",
+  "98978": "remote therapeutic monitoring of cognitive behavioral therapy, device and data, 16 or more days in 30",
+  "98984": "remote therapeutic monitoring of breathing, device and data, 2 to 15 days in 30",
+  "98985": "remote therapeutic monitoring of muscles and joints, device and data, 2 to 15 days in 30",
+  "98986": "remote therapeutic monitoring of cognitive behavioral therapy, device and data, 2 to 15 days in 30",
+  "98980": "remote therapeutic monitoring treatment management, the first 20 minutes of a month",
+  "98981": "remote therapeutic monitoring treatment management, each further 20 minutes",
+  "98979": "remote therapeutic monitoring treatment management, the first 10 minutes of a month"
  }
 }

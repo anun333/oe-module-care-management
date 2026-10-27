@@ -3,7 +3,9 @@
 Monthly care management for OpenEMR: enroll a patient with the consent CMS requires, log the time clinical staff and the billing practitioner spend, and see each month who meets which code. It covers:
 - chronic care management (CCM);
 - principal care management (PCM);
-- behavioral health integration (BHI).
+- behavioral health integration (BHI);
+- complex CCM, psychiatric collaborative care (CoCM) and advanced primary care management (APCM);
+- remote physiologic and remote therapeutic monitoring (RPM and RTM), from 0.4.0.
 
 It bills nothing: staff add the codes on a fee sheet, as for any other service. From 0.3.0 it checks what they billed against the time logged.
 
@@ -27,13 +29,14 @@ Using the module day to day, task by task for each role: see [GUIDE.md](GUIDE.md
   - enroll in a service, with the billing practitioner and the conditions managed (from the active problem list);
   - record consent, with the four things the patient must be told, and for BHI and CoCM their permission to consult specialists;
   - for CCM, the billing practitioner records a month's moderate or high complexity decision-making, which complex CCM needs;
-  - log time;
+  - log time, and for RPM and RTM whether it included a live conversation with the patient or caregiver;
+  - for RPM and RTM, enter each 30-day period's days of data, read from the device's own system;
   - record that the patient stopped.
 - **Dashboard card:** this month's minutes against each enrollment's threshold, and what blocks billing.
 
 ## The codes
 
-Time is counted per calendar month and never carries over.
+Time is counted per calendar month and never carries over. The codes, minutes and days are in [data/codes.json](data/codes.json) by calendar year (0.4.0), each year from that year's physician fee schedule final rule. A month is counted under its own year's final rule; a month in a year the module doesn't have yet is counted under the last year it has, and the page says so. The CY 2027 proposed rule is in the file, marked "proposed", and never used: see [CY 2027](#cy-2027) below.
 
 | Service | Clinical staff time (general supervision) | The billing practitioner's own time |
 |---|---|---|
@@ -53,6 +56,22 @@ Time is counted per calendar month and never carries over.
 - **APCM's add-ons** are shown beside a CoCM or BHI enrollment with time logged that month, when the same practitioner bills APCM. Billed outside APCM, the time-based codes keep their time requirements.
 - **Alternatives:** when more than one route is met, the page lists them all and says to bill one.
 
+### Remote monitoring (0.4.0)
+
+As the CY 2026 final rule set them (90 FR 49394-99), with the CY 2024 rule's clarifications (88 FR 78882-84):
+
+| | RPM | RTM (breathing; muscles and joints; cognitive behavioral therapy) |
+|---|---|---|
+| Device and data, for a 30-day period | 99445 for 2 to 15 days, 99454 for 16 or more | 98984, 98985, 98986 for 2 to 15 days; 98976, 98977, 98978 for 16 or more |
+| Set-up, once an episode | 99453, with the first period that has 2 days | 98975, the same |
+| Treatment management, by calendar month (staff and practitioner time) | 99470 at 10 minutes, or 99457 at 20; 99458 for each further 20 | 98979 at 10 minutes, or 98980 at 20; 98981 for each further 20 |
+
+- **Days of data** come from the device's own system: staff enter each period's start and its days. The device code goes with the month the period ends. The 2-to-15-day and 16-or-more codes "are not additive", and 99470 and 99457 (98979 and 98980) "are also not additive" (90 FR 49397).
+- **A live conversation each month.** The treatment management codes "require a live, interactive communication with the patient/caregiver" (90 FR 49397, adopting CPT's words). Time is marked as one when logged; a month with none meets no treatment management code, and the page says why.
+- **One at a time.** "Only one practitioner can bill" the device codes "during a 30-day period", and RPM and RTM "may not be billed together" (88 FR 78883): a second RPM or RTM enrollment active in a month blocks both, and device periods can't overlap. Either may go with CCM, PCM or BHI "if the time or effort is not counted twice" (88 FR 78883), and APCM's exclusions don't list them (89 FR 97895).
+- **RPM is only for an established patient** (88 FR 78883-84): a visit with the billing practitioner in the 3 years before it starts, the Claims Processing Manual's new-patient window (chapter 12, 30.6.7). CMS counts the same group and specialty; the module counts only the billing practitioner, as for every other service, so record the visit that made the patient established when it was someone else's. RTM has no such rule in 2026.
+- **Consent:** RPM and RTM need the patient's consent, without CCM's list of what they must be told.
+
 ## What blocks billing
 
 - **Consent not recorded, or recorded without all four things CMS requires the patient be told** (for BHI and CoCM, also the patient's permission for the practitioner to consult specialists, a psychiatric consultant included):
@@ -60,15 +79,18 @@ Time is counted per calendar month and never carries over.
   - that cost-sharing applies;
   - that only one practitioner can furnish and bill it in a calendar month;
   - that they can stop, effective at the end of the month.
-- **Too few conditions:** two for CCM, one for PCM, BHI and CoCM. APCM's code follows the number of conditions instead.
+- **Too few conditions:** two for CCM, one for PCM, BHI and CoCM. APCM's code follows the number of conditions instead. CMS sets no minimum for RPM or RTM.
 - **No initiating visit,** when the billing practitioner hadn't seen the patient recently enough before the enrollment started, and none is recorded. Only a visit with the billing practitioner counts:
   - **APCM:** none in the 3 years before. CMS's APCM FAQ: "All new patients and those who have not been seen by the billing practitioner within 3 years require an initiating visit."
   - **CCM and PCM:** none in the year before. MLN909188, addressed to the billing practitioner: "an initiating visit for new patients or patients who you haven't seen within the previous 1 year."
   - **BHI and CoCM:** none in the year before. The BHI FAQ: "not seen within a year of commencement of BHI services"; MLN909432: the initiating visit "establishes the patient's relationship with the billing practitioner and makes sure the billing practitioner assesses the patient before starting BHI services."
+  - **RPM:** none in the 3 years before (an established patient, above). **RTM:** no initiating visit in 2026.
 
   This is worked out each time the page is read, so enrollments saved earlier read right too: before 0.3.9 a visit with anyone counted for all but APCM, and before 0.3.8 APCM looked back one year.
 
   For practices billing under the fee schedule, CMS's booklet says CCM must have been discussed at that visit. Its RHC/FQHC manual says it need not have been.
+- **PCM past its year** (0.4.0). MLN909188 (June 2025, page 10): "You can provide PCM services monthly if the patient needs them. After 1 year, we require another initial visit to continue the services." The year is 12 calendar months, from the start's month or the month of the latest initiating visit recorded. From the thirteenth the month is blocked until a new one is recorded, which the consent form takes on its own.
+- **A second RPM or RTM enrollment** for the patient in the same month (above).
 - **CCM and PCM by the same practitioner** in the same month. A different practitioner may bill PCM for another condition.
 - **CoCM and general BHI** for the same patient in the same month, whoever bills them.
 - **APCM and CCM or PCM by the same practitioner** in the same month (CY 2025 PFS rule, Table 26). The same table also bars TCM, interprofessional consultations, virtual check-ins and e-visits by that practitioner; the module doesn't track those, so check them on the fee sheet.
@@ -77,7 +99,15 @@ A patient who stops can still be billed for the month they stop in, since stoppi
 
 ## Health centers
 
-RHCs and FQHCs bill these individual codes. CMS ended G0511 (billing was allowed "through September 30, 2025") and G0512 ("no longer payable … beginning January 1, 2026"). Since 2026 they may bill APCM and its add-ons too, "with or without a qualifying visit" (APCM FAQ). They're paid separately from the RHC AIR or FQHC PPS rate, at national non-facility fee schedule rates. Part B coinsurance applies, which the consent covers.
+RHCs and FQHCs bill these individual codes, RPM and RTM included. CMS ended G0511 (billing was allowed "through September 30, 2025") and G0512 ("no longer payable … beginning January 1, 2026"). Since 2026 they may bill APCM and its add-ons too, "with or without a qualifying visit" (APCM FAQ). They're paid separately from the RHC AIR or FQHC PPS rate, at national non-facility fee schedule rates. Part B coinsurance applies, which the consent covers.
+
+## CY 2027
+
+The CY 2027 physician fee schedule final rule isn't published yet (2026-10-26). The proposed rule (FR 2026-14327, 91 FR 43842, 2026-07-16) is in data/codes.json as the 2027 entry, marked "proposed", and the module never uses it: CMS changes proposals in final rules, and counting a month under one could hide codes the final rule allows or show codes it doesn't. For care management it proposes:
+- **RPM and RTM:** a "separately reportable initiating visit in association with the onset of RPM or RTM services", by the billing practitioner, face to face (91 FR 43892); RTM only for established patients (91 FR 43892); payment only "when furnished by clinical staff employed by the practice" (91 FR 43893). It floats, without proposing, four G-codes in place of the 17 remote monitoring codes (91 FR 43894-95).
+- **CCM, PCM, BHI, CoCM, APCM and its add-ons:** new values only, with no code, minute or rule change.
+
+When the final rule is out, the 2027 entry is checked against it and released with what it finalized. Until then a 2027 month is counted under 2026, with a note on the page.
 
 ## Who can open what
 
@@ -85,17 +115,19 @@ RHCs and FQHCs bill these individual codes. CMS ended G0511 (billing was allowed
 |---|---|---|
 | Month list and menu entry | `patients/med` | the Staff Worklist |
 | The month list's CSV, and its Billed column | `acct/bill` | OpenEMR's billing pages |
-| The patient's page (enroll, consent, log time) | `patients/med` write | the Staff Worklist's actions |
+| The patient's page (enroll, consent, log time, device periods) | `patients/med` write | the Staff Worklist's actions |
 | The Staff Worklist's "Care management, not billed" tab (with the Staff Worklist 0.8.0 or later) | `acct/bill` | the month list's billing columns |
 | Dashboard card | `patients/med` | the module's pages |
 
-Every view and every change is written to OpenEMR's audit log. Time entries are never edited: a wrong one is removed, and the removal is kept with who made it and when.
+Every view and every change is written to OpenEMR's audit log. Time entries and device periods are never edited: a wrong one is removed, and the removal is kept with who made it and when.
 
 ## Not done yet
 
 - **Creating the month's encounter and fee sheet lines.** It writes billing, so it waits until the month list has been used. Until then, the Billed check finds the months nobody billed.
 - **Checking for TCM, e-visits and the other codes APCM excludes,** which the module doesn't track.
 - **Checking the care plan itself.** CMS requires an electronic care plan; OpenEMR's Care Plan form is where it lives.
+- **Reading device data.** RPM and RTM's days of data are entered by staff from the device's own system; OpenEMR has no device feed for the module to read.
+- **Remote monitoring's other limits:** RPM during a surgical global period, and the CPT rules on which other codes can't go with RPM or RTM (99091, 99474), are left to the fee sheet.
 
 ## Install
 
@@ -118,6 +150,8 @@ Tested with synthetic data on OpenEMR 8.4.1 (Docker image `openemr/openemr:8.4.1
 - enrolls five patients with conditions from their problem lists;
 - logs staff and practitioner time across two months;
 - confirms the codes by both CCM routes, BHI, and each blocker (no consent, CCM and PCM by one practitioner, no initiating visit);
+- RPM and RTM (0.4.0): device periods with their days, treatment management with and without a live conversation, an overlapping period refused, RPM for a patient who isn't established, RPM and RTM together blocked, and RPM billed as met;
+- PCM past its year, until a new initiating visit is recorded, and a 2027 month counted under 2026 with its note;
 - stops an enrollment;
 - checks that time logged as the practitioner's by someone else becomes staff time;
 - produces the month list, its CSV and the card;
@@ -148,6 +182,7 @@ Read 2026-10-18, and for 0.2.0 on 2026-10-19:
 - CMS, [Chronic Care Management Services](https://www.cms.gov/files/document/chroniccaremanagement.pdf) (MLN909188, June 2025), and the [CCM FAQ](https://www.cms.gov/files/document/chronic-care-management-faqs.pdf).
 - CMS, [Behavioral Health Integration Services](https://www.cms.gov/files/document/mln909432-behavioral-health-integration-services.pdf) (MLN909432, January 2026).
 - The CY 2025 and CY 2026 Physician Fee Schedule final rules (89 FR 97710, 90 FR 49266), and the CY 2017 rule for CoCM's episode (81 FR 80241).
+- For 0.4.0, read 2026-10-26: the CY 2026 final rule's remote monitoring section (90 FR 49394-99), the CY 2024 final rule's remote monitoring clarifications (88 FR 78882-84), the Medicare Claims Processing Manual chapter 12, 30.6.7 (Rev. 13753), MLN909188 page 10 for PCM's yearly visit, and the CY 2027 proposed rule (FR 2026-14327, 91 FR 43842).
 - CMS, [Advanced Primary Care Management Services](https://www.cms.gov/medicare/payment/fee-schedules/physician-fee-schedule/advanced-primary-care-management-services) and its [FAQ](https://www.cms.gov/files/document/advanced-primary-care-management-apcm-services-faq.pdf) (January 2026), and the [BHI FAQ](https://www.cms.gov/medicare/medicare-fee-for-service-payment/physicianfeesched/downloads/behavioral-health-integration-faqs.pdf).
 - Medicare Benefit Policy Manual chapter 13, §230, and Claims Processing Manual chapter 9, §60.8, for RHCs and FQHCs.
 

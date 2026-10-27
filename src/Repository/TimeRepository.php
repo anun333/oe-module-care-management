@@ -25,11 +25,12 @@ final class TimeRepository
      * Entries still standing in a month, for some patients (all patients when $pids is null).
      *
      * @param list<int>|null $pids
-     * @return list<array{id: int, pid: int, enrollmentId: int, servedOn: \DateTimeImmutable, minutes: int, role: string, activity: string, user: string}>
+     * @return list<array{id: int, pid: int, enrollmentId: int, servedOn: \DateTimeImmutable, minutes: int, role: string, activity: string, user: string, interactive: bool}>
+     *         interactive: the time included a live conversation with the patient or caregiver (RPM and RTM)
      */
     public function inMonth(Month $month, ?array $pids = null): array
     {
-        $sql = "SELECT t.`id`, t.`pid`, t.`enrollment_id`, t.`served_on`, t.`minutes`, t.`role`, t.`activity`, CONCAT_WS(' ', u.`fname`, u.`lname`) AS user_name
+        $sql = "SELECT t.`id`, t.`pid`, t.`enrollment_id`, t.`served_on`, t.`minutes`, t.`role`, t.`activity`, t.`interactive`, CONCAT_WS(' ', u.`fname`, u.`lname`) AS user_name
                   FROM `care_mgmt_time` AS t LEFT JOIN `users` AS u ON u.`id` = t.`user_id`
                  WHERE t.`removed_at` IS NULL AND t.`served_on` >= ? AND t.`served_on` <= ?";
         $binds = [$month->first()->format('Y-m-d'), $month->last()->format('Y-m-d')];
@@ -50,6 +51,7 @@ final class TimeRepository
             'role' => (string)$r['role'],
             'activity' => (string)$r['activity'],
             'user' => trim((string)($r['user_name'] ?? '')),
+            'interactive' => (int)($r['interactive'] ?? 0) === 1,
         ], QueryUtils::fetchRecords($sql, $binds));
     }
 
@@ -83,11 +85,11 @@ final class TimeRepository
         return $out;
     }
 
-    public function add(int $pid, int $enrollmentId, string $servedOn, int $minutes, string $role, string $activity, int $userId): int
+    public function add(int $pid, int $enrollmentId, string $servedOn, int $minutes, string $role, string $activity, int $userId, bool $interactive = false): int
     {
         return (int)QueryUtils::sqlInsert(
-            'INSERT INTO `care_mgmt_time` (`pid`, `enrollment_id`, `served_on`, `minutes`, `role`, `activity`, `user_id`) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [$pid, $enrollmentId, $servedOn, $minutes, $role, $activity, $userId],
+            'INSERT INTO `care_mgmt_time` (`pid`, `enrollment_id`, `served_on`, `minutes`, `role`, `activity`, `user_id`, `interactive`) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [$pid, $enrollmentId, $servedOn, $minutes, $role, $activity, $userId, $interactive ? 1 : 0],
         );
     }
 

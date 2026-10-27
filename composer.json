@@ -1,6 +1,6 @@
 {
     "name": "anun333/oe-module-care-management",
-    "description": "Care management for OpenEMR: enrollment with CMS's consent elements, monthly time logged by clinical staff and the billing practitioner, and each month's list of who meets which chronic care management (CCM), principal care management (PCM) or behavioral health integration (BHI) code",
+    "description": "Care management for OpenEMR: enrollment with CMS's consent elements, monthly time logged by clinical staff and the billing practitioner, and each month's list of who meets which chronic care management (CCM), principal care management (PCM), behavioral health integration (BHI), collaborative care, APCM or remote monitoring (RPM, RTM) code",
     "type": "openemr-module",
     "license": "GPL-3.0-or-later",
     "keywords": [
@@ -9,7 +9,8 @@
         "care-management",
         "chronic-care-management",
         "ccm",
-        "medicare"
+        "medicare",
+        "remote-patient-monitoring"
     ],
     "authors": [
         {

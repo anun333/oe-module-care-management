@@ -43,10 +43,14 @@ final class MonthLines
         $complex = (new MonthRepository())->complex($ids, $month);
         $earlier = $times->hadTimeBefore($ids, $month);
         $billed = $withBilling ? (new BillingRepository())->billedIn($month, $pids) : [];
+        $periods = [];
+        foreach ((new DevicePeriodRepository())->forPatients($pids) as $p) {
+            $periods[$p['pid']][] = $p;
+        }
         $monthOver = $month->last() < $today;
         $lines = [];
         foreach ($active as $e) {
-            $s = MonthRules::summarize($e, $entries, $byPatient[$e->pid], $month, $complex[$e->id] ?? false, $earlier[$e->id] ?? false);
+            $s = MonthRules::summarize($e, $entries, $byPatient[$e->pid], $month, $complex[$e->id] ?? false, $earlier[$e->id] ?? false, $periods[$e->pid] ?? []);
             $codesBilled = BillingCheck::forService($billed[$e->pid] ?? [], $e->service);
             $lines[] = ['e' => $e, 's' => $s, 'billable' => $s['blockers'] === [] && array_filter($s['routes']) !== [],
                 'billed' => $codesBilled, 'check' => BillingCheck::check($s['routes'], $s['blockers'], $codesBilled, $monthOver)];

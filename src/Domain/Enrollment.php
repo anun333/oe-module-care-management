@@ -23,6 +23,7 @@ final class Enrollment
      * @param bool         $initiatingNeeded not seen by the billing practitioner within the service's look-back before the start
      *                                     (Service::initiatingLookBack), so an initiating visit is needed
      * @param bool         $qmb a Qualified Medicare Beneficiary (APCM's G0558)
+     * @param ?string      $deviceKind what RTM monitors (Service::RTM_KINDS), which picks its device codes; null otherwise
      */
     public function __construct(
         public readonly int $id,
@@ -37,6 +38,7 @@ final class Enrollment
         public readonly \DateTimeImmutable $startedOn,
         public readonly ?\DateTimeImmutable $stoppedOn,
         public readonly bool $qmb = false,
+        public readonly ?string $deviceKind = null,
     ) {
     }
 

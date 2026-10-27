@@ -54,6 +54,8 @@ final class BillingCheckTest extends TestCase
         self::assertSame(['99484', 'G0570'], Service::codes(Service::BHI));
         self::assertSame(['99492', '99493', '99494', 'G2214', 'G0568', 'G0569'], Service::codes(Service::COCM));
         self::assertSame(['G0556', 'G0557', 'G0558'], Service::codes(Service::APCM));
+        self::assertSame(['99453', '99445', '99454', '99470', '99457', '99458'], Service::codes(Service::RPM));
+        self::assertSame(['98975', '98984', '98976', '98985', '98977', '98986', '98978', '98979', '98980', '98981'], Service::codes(Service::RTM));
         $all = array_merge(...array_map(Service::codes(...), Service::ALL));
         self::assertSame(count($all), count(array_unique($all)), 'a billed code tells which enrollment it belongs to');
     }

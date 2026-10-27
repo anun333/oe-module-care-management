@@ -217,6 +217,29 @@ final class MonthRulesTest extends TestCase
             'another practitioner may bill CCM');
     }
 
+    public function testPcmNeedsAnotherInitiatingVisitAfterAYear(): void
+    {
+        // MLN909188 (June 2025, page 10): "You can provide PCM services monthly if the patient needs them. After 1 year,
+        // we require another initial visit to continue the services."
+        $pcm = self::enrollment(Service::PCM, conditions: ['E11.9'], startedOn: '2025-10-15');
+        $blocked = static fn(Enrollment $e, string $month): bool => in_array(MonthRules::PCM_RENEWAL, MonthRules::summarize($e, [], [$e], Month::parse($month))['blockers'], true);
+        self::assertFalse($blocked($pcm, '2025-10'));
+        self::assertFalse($blocked($pcm, '2026-09'), 'the twelfth month');
+        self::assertTrue($blocked($pcm, '2026-10'), 'the thirteenth');
+        $renewed = self::enrollment(Service::PCM, conditions: ['E11.9'], initiatingVisitOn: '2026-10-20', startedOn: '2025-10-15');
+        self::assertFalse($blocked($renewed, '2026-10'));
+        self::assertFalse($blocked($renewed, '2027-09'));
+        self::assertTrue($blocked($renewed, '2027-10'));
+        self::assertFalse($blocked($renewed, '2026-09'), 'before the renewal, the start still covers September');
+        $late = self::enrollment(Service::PCM, conditions: ['E11.9'], initiatingVisitOn: '2026-11-03', startedOn: '2025-10-15');
+        self::assertTrue($blocked($late, '2026-10'), 'a visit after the month ends does not cover it');
+        $before = self::enrollment(Service::PCM, conditions: ['E11.9'], initiatingNeeded: true, initiatingVisitOn: '2025-10-01', startedOn: '2025-10-15');
+        self::assertTrue($blocked($before, '2026-10'), 'an initiating visit before the start: the year runs from the start');
+        // Only PCM: CCM's initiating visit is once (MLN909188 says this only of PCM).
+        $ccm = self::enrollment(Service::CCM, startedOn: '2024-01-10');
+        self::assertFalse($blocked($ccm, '2026-10'));
+    }
+
     /** @param list<string>|null $conditions */
     private static function enrollment(
         string $service,

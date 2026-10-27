@@ -17,32 +17,67 @@ namespace OpenHealthcare\CareManagement\Repository;
 
 use OpenEMR\Common\Database\QueryUtils;
 use OpenHealthcare\CareManagement\Domain\Enrollment;
-use OpenHealthcare\CareManagement\Domain\Service;
 use OpenHealthcare\CareManagement\Domain\Month;
+use OpenHealthcare\CareManagement\Domain\Schedule;
+use OpenHealthcare\CareManagement\Domain\Service;
 
 final class EnrollmentRepository
 {
     private const COLUMNS = '`id`, `pid`, `service`, `practitioner_id`, `conditions_json`, `consent_on`, `consent_how`, `consent_explained`,
-        `consent_by`, `initiating_visit_on`, `started_on`, `stopped_on`, `note`, `qmb`';
+        `consent_by`, `initiating_visit_on`, `started_on`, `stopped_on`, `note`, `qmb`, `device_kind`';
 
     /**
      * The columns read, with whether an initiating visit is needed, worked out on read under
-     * each service's rule (Service::initiatingLookBack), so enrollments saved under an earlier
-     * rule read right too: 0.3.7's 1 year for APCM, and before 0.3.9 a visit with any
-     * practitioner for the others. What was stored at enrollment stays for an unknown service.
+     * each service's rule for the year the enrollment started (Service::initiatingLookBack), so
+     * enrollments saved under an earlier rule read right too: 0.3.7's 1 year for APCM, and before
+     * 0.3.9 a visit with any practitioner for the others. What was stored at enrollment stays for
+     * an unknown service. $allowProposed counts proposed years too: only tests do, to see a
+     * year's change of rule.
      */
-    public static function columns(): string
+    public static function columns(bool $allowProposed = false): string
     {
         $cases = '';
         foreach (Service::ALL as $service) {
-            $rule = Service::initiatingLookBack($service);
-            $seen = 'SELECT 1 FROM `form_encounter` AS fe WHERE fe.`pid` = `care_mgmt_enrollment`.`pid`'
-                . ($rule['byPractitioner'] ? ' AND fe.`provider_id` = `care_mgmt_enrollment`.`practitioner_id`' : '')
-                . ' AND fe.`date` < `care_mgmt_enrollment`.`started_on`'
-                . ' AND fe.`date` >= DATE_SUB(`care_mgmt_enrollment`.`started_on`, INTERVAL ' . (int)$rule['years'] . ' YEAR)';
-            $cases .= " WHEN '" . $service . "' THEN NOT EXISTS ($seen)";
+            // The rule of each year a start can be counted under, newest first; a run of years with the same rule is one.
+            $byYear = [];
+            foreach (array_reverse(Schedule::usableYears($allowProposed)) as $year) {
+                $byYear[$year] = self::needs(Service::initiatingLookBack($service, $year, $allowProposed));
+            }
+            $rules = array_values(array_unique($byYear));
+            if (count($rules) === 1) {
+                $cases .= " WHEN '" . $service . "' THEN " . $rules[0];
+                continue;
+            }
+            $when = '';
+            $years = array_keys($byYear);
+            foreach ($years as $i => $year) {
+                if ($i < count($years) - 1 && $byYear[$year] !== $byYear[$years[$i + 1]]) {
+                    $when .= ' WHEN YEAR(`care_mgmt_enrollment`.`started_on`) >= ' . (int)$year . ' THEN ' . $byYear[$year];
+                }
+            }
+            $cases .= " WHEN '" . $service . "' THEN CASE" . $when . ' ELSE ' . end($byYear) . ' END';
         }
         return self::COLUMNS . ', CASE `service`' . $cases . ' ELSE `initiating_needed` END AS `initiating_needed`';
+    }
+
+    /**
+     * The SQL for whether an enrollment needs an initiating visit under a look-back: none (0), always
+     * (1), or no visit in the years before the start, by the billing practitioner where it says so.
+     *
+     * @param array{years: ?int, byPractitioner: bool} $rule
+     */
+    private static function needs(array $rule): string
+    {
+        if ($rule['years'] === null) {
+            return '0';
+        }
+        if ($rule['years'] === 0) {
+            return '1';
+        }
+        return 'NOT EXISTS (SELECT 1 FROM `form_encounter` AS fe WHERE fe.`pid` = `care_mgmt_enrollment`.`pid`'
+            . ($rule['byPractitioner'] ? ' AND fe.`provider_id` = `care_mgmt_enrollment`.`practitioner_id`' : '')
+            . ' AND fe.`date` < `care_mgmt_enrollment`.`started_on`'
+            . ' AND fe.`date` >= DATE_SUB(`care_mgmt_enrollment`.`started_on`, INTERVAL ' . (int)$rule['years'] . ' YEAR))';
     }
 
     /** @return list<Enrollment> newest first */
@@ -83,15 +118,15 @@ final class EnrollmentRepository
      * @param list<array{id: int, title: string, code: string}> $conditions
      */
     public function add(int $pid, string $service, int $practitionerId, array $conditions, ?string $consentOn, ?string $consentHow, bool $explained,
-        ?string $initiatingVisitOn, string $startedOn, string $note, int $userId, bool $qmb = false): int
+        ?string $initiatingVisitOn, string $startedOn, string $note, int $userId, bool $qmb = false, ?string $deviceKind = null): int
     {
         return (int)QueryUtils::sqlInsert(
             'INSERT INTO `care_mgmt_enrollment` (`pid`, `service`, `practitioner_id`, `conditions_json`, `consent_on`, `consent_how`, `consent_explained`,
-                 `consent_by`, `initiating_needed`, `initiating_visit_on`, `started_on`, `note`, `created_by`, `qmb`)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                 `consent_by`, `initiating_needed`, `initiating_visit_on`, `started_on`, `note`, `created_by`, `qmb`, `device_kind`)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [$pid, $service, $practitionerId, json_encode($conditions, JSON_THROW_ON_ERROR), $consentOn, $consentHow, $explained ? 1 : 0,
-                $consentOn === null ? null : $userId, $this->seenBefore($pid, $startedOn, $service, $practitionerId) ? 0 : 1, $initiatingVisitOn, $startedOn, $note, $userId,
-                $service === Service::APCM && $qmb ? 1 : 0],
+                $consentOn === null ? null : $userId, $this->needsInitiatingVisit($pid, $startedOn, $service, $practitionerId) ? 1 : 0, $initiatingVisitOn, $startedOn, $note, $userId,
+                $service === Service::APCM && $qmb ? 1 : 0, $service === Service::RTM && in_array($deviceKind, Service::RTM_KINDS, true) ? $deviceKind : null],
         );
     }
 
@@ -101,6 +136,15 @@ final class EnrollmentRepository
             'UPDATE `care_mgmt_enrollment` SET `consent_on` = ?, `consent_how` = ?, `consent_explained` = ?, `consent_by` = ?,
                  `initiating_visit_on` = COALESCE(?, `initiating_visit_on`) WHERE `id` = ? AND `pid` = ?',
             [$consentOn, $consentHow, $explained ? 1 : 0, $userId, $initiatingVisitOn, $id, $pid],
+        );
+    }
+
+    /** A new initiating visit, without touching the consent: PCM's yearly one (MLN909188), or one recorded late. */
+    public function recordInitiatingVisit(int $id, int $pid, string $on): void
+    {
+        QueryUtils::sqlStatementThrowException(
+            'UPDATE `care_mgmt_enrollment` SET `initiating_visit_on` = ? WHERE `id` = ? AND `pid` = ?',
+            [$on, $id, $pid],
         );
     }
 
@@ -141,13 +185,16 @@ final class EnrollmentRepository
     }
 
     /**
-     * Whether the patient was seen recently enough before a date that the service needs no
-     * initiating visit: within its look-back, and by the billing practitioner where the
-     * service says so (Service::initiatingLookBack).
+     * Whether an enrollment starting on a date needs an initiating visit: when the service needs
+     * one, and the patient wasn't seen within its look-back, by the billing practitioner where the
+     * service says so (Service::initiatingLookBack, by the start's year).
      */
-    private function seenBefore(int $pid, string $day, string $service, int $practitionerId): bool
+    private function needsInitiatingVisit(int $pid, string $day, string $service, int $practitionerId): bool
     {
-        $rule = Service::initiatingLookBack($service);
+        $rule = Service::initiatingLookBack($service, (int)substr($day, 0, 4));
+        if ($rule['years'] === null || $rule['years'] === 0) {
+            return $rule['years'] === 0;
+        }
         $sql = 'SELECT COUNT(*) AS n FROM `form_encounter` WHERE `pid` = ? AND `date` < ? AND `date` >= DATE_SUB(?, INTERVAL ' . (int)$rule['years'] . ' YEAR)';
         $binds = [$pid, $day, $day];
         if ($rule['byPractitioner']) {
@@ -155,7 +202,7 @@ final class EnrollmentRepository
             $binds[] = $practitionerId;
         }
         $row = QueryUtils::fetchRecords($sql, $binds)[0] ?? ['n' => 0];
-        return (int)$row['n'] > 0;
+        return (int)$row['n'] === 0;
     }
 
     /** @return list<array{id: int, title: string, code: string}> */
@@ -188,6 +235,7 @@ final class EnrollmentRepository
             new \DateTimeImmutable((string)$r['started_on']),
             $date($r['stopped_on']),
             (int)($r['qmb'] ?? 0) === 1,
+            isset($r['device_kind']) && is_string($r['device_kind']) && $r['device_kind'] !== '' ? $r['device_kind'] : null,
         );
     }
 }

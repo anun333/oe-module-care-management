@@ -1,8 +1,9 @@
 <?php
 
 /**
- * The care management services the module covers, with CMS's codes and monthly time
- * thresholds (MLN909188, the CCM FAQ, MLN909432 and the CY 2025-2026 PFS rules).
+ * The care management services the module covers. Their codes, minutes and days, and the
+ * rules that change from year to year, are in data/codes.json by calendar year (Schedule),
+ * read from MLN909188, the CCM FAQ, MLN909432 and the CY 2017-2026 PFS rules.
  * Each add-on unit needs its full time. 99439's limit of two a month is CPT's, as
  * commonly cited; CMS's booklet and FAQ don't state it.
  *
@@ -22,6 +23,29 @@
  *    G0569 (CoCM, later months) and G0570 (general BHI), also with no time requirement, for
  *    the practitioner billing APCM that month (CY 2026 PFS rule, 90 FR 49469-71).
  *
+ * 0.4.0, remote monitoring as the CY 2026 final rule set it (90 FR 49394-99):
+ *  - RPM and RTM device and data for a 30-day period: 99445 (RPM) or 98984, 98985, 98986 (RTM of
+ *    breathing, muscles and joints, cognitive behavioral therapy) for 2 to 15 days, 99454 or
+ *    98976, 98977, 98978 for 16 or more. "The 2 to 15 day codes ... and 16 to 30 day codes ...
+ *    are not additive ... Billing practitioners would only bill for one of those codes for the
+ *    appropriate number of days of data transmission per 30 days" (90 FR 49397);
+ *  - treatment management by calendar month: 99470 or 98979 for the first 10 minutes, 99457 or
+ *    98980 for the first 20, "also not additive", and 99458 or 98981 for each further 20 "after
+ *    either 99457 or 98980 is billed" (90 FR 49397). The codes "require a live, interactive
+ *    communication with the patient/caregiver" (90 FR 49397, adopting CPT's words), so the
+ *    month needs time logged as one;
+ *  - set-up, 99453 or 98975, once an episode, which now "requires 2 days of monitoring in a
+ *    30-day period for reporting, as opposed to 16" (90 FR 49399);
+ *  - "only one practitioner can bill" the device codes "during a 30-day period", and RPM and RTM
+ *    "may not be billed together"; either may be billed with CCM, BHI or PCM "if the time or
+ *    effort is not counted twice" (CY 2024 PFS rule, 88 FR 78883), and APCM doesn't exclude them
+ *    (89 FR 97895, Table 26);
+ *  - RPM only for an established patient (88 FR 78883-84): a "new patient" is one who "has not
+ *    received any professional services ... from the physician or physician group practice
+ *    (same physician specialty) within the previous 3 years" (Medicare Claims Processing
+ *    Manual, chapter 12, 30.6.7). The module counts only the billing practitioner's visits, as
+ *    for every other service. RTM has no such rule in 2026 (88 FR 78884).
+ *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
  * @author    anun333 <anun333@posteo.net>
@@ -40,7 +64,14 @@ final class Service
     public const BHI = 'bhi';
     public const COCM = 'cocm';
     public const APCM = 'apcm';
-    public const ALL = [self::CCM, self::PCM, self::BHI, self::COCM, self::APCM];
+    /** Remote physiologic and remote therapeutic monitoring (0.4.0). */
+    public const RPM = 'rpm';
+    public const RTM = 'rtm';
+    public const ALL = [self::CCM, self::PCM, self::BHI, self::COCM, self::APCM, self::RPM, self::RTM];
+    public const REMOTE = [self::RPM, self::RTM];
+
+    /** What RTM monitors, which picks its device codes; RPM's codes don't depend on it. */
+    public const RTM_KINDS = ['respiratory', 'musculoskeletal', 'cbt'];
 
     /** Routes beyond the staff and practitioner ones: complex CCM, APCM itself, and an APCM add-on. */
     public const COMPLEX = 'complex';
@@ -54,107 +85,25 @@ final class Service
     public const PRACTITIONER = 'practitioner';
 
     /**
-     * The routes a month's time can be billed by: for clinical staff time and for the billing
-     * practitioner's own. first = minutes for the base code; each = minutes per add-on unit;
-     * max = most add-on units a month (null: none stated); counts = whose minutes count. CCM's
-     * practitioner time counts toward the staff codes when it isn't used for 99491 (MLN909188).
-     * The codes and minutes are in data/codes.json, with the CPT notice.
-     *
-     * @return array<string, array{base: string, first: int, addOn: ?string, each: ?int, max: ?int, counts: list<string>}>
-     */
-    public static function routes(string $service): array
-    {
-        return match ($service) {
-            self::CCM, self::PCM, self::BHI => self::data()['routes'][$service],
-            // Both are worked out in MonthRules: CoCM's codes depend on the month of the episode, and APCM has no time.
-            self::COCM, self::APCM => [],
-            default => throw new \InvalidArgumentException("Unknown care management service $service"),
-        };
-    }
-
-    /** @return array{base: string, first: int, addOn: string, each: int} complex CCM's codes and minutes */
-    public static function complexCcm(): array
-    {
-        return self::data()['complexCcm'];
-    }
-
-    /** @return array{base: string, first: int} CoCM's code and minutes in the first month of an episode, or in a later one */
-    public static function cocmMonth(bool $laterInEpisode): array
-    {
-        return self::data()['cocm'][$laterInEpisode ? 'laterMonth' : 'firstMonth'];
-    }
-
-    /** @return array{code: string, each: int} CoCM's add-on code and minutes per unit */
-    public static function cocmAddOn(): array
-    {
-        return self::data()['cocm']['addOn'];
-    }
-
-    /** @return array{code: string, first: int} CoCM's code when the month's threshold isn't met */
-    public static function cocmShort(): array
-    {
-        return self::data()['cocm']['short'];
-    }
-
-    /** The APCM add-on a CoCM or BHI enrollment carries: CoCM's by month of the episode, or general BHI's. */
-    public static function apcmAddOn(string $service, bool $laterInEpisode): string
-    {
-        $addOns = self::data()['apcmAddOns'];
-        return $service === self::BHI ? $addOns['bhi'] : $addOns[$laterInEpisode ? 'cocmLaterMonth' : 'cocmFirstMonth'];
-    }
-
-    /**
-     * Every code an enrollment in the service can meet, for matching what was billed: each route's
-     * base and add-on codes, complex CCM's, CoCM's by month of the episode, APCM's by conditions, and
-     * the APCM add-on a CoCM or BHI enrollment can carry. No code belongs to two services.
+     * Every code an enrollment in the service can meet, under any year a month can be counted
+     * under, for matching what was billed. The year's codes are in data/codes.json
+     * (Schedule::codes). No code belongs to two services.
      *
      * @return list<string>
      */
     public static function codes(string $service): array
     {
         $codes = [];
-        foreach (self::routes($service) as $route) {
-            $codes[] = $route['base'];
-            if ($route['addOn'] !== null) {
-                $codes[] = $route['addOn'];
-            }
+        foreach (Schedule::usableYears() as $year) {
+            array_push($codes, ...Schedule::forYear($year)->codes($service));
         }
-        $more = match ($service) {
-            self::CCM => [self::complexCcm()['base'], self::complexCcm()['addOn']],
-            self::BHI => [self::apcmAddOn(self::BHI, false)],
-            self::COCM => [self::cocmMonth(false)['base'], self::cocmMonth(true)['base'], self::cocmAddOn()['code'], self::cocmShort()['code'],
-                self::apcmAddOn(self::COCM, false), self::apcmAddOn(self::COCM, true)],
-            self::APCM => [self::apcmCode(1, false), self::apcmCode(2, false), self::apcmCode(2, true)],
-            default => [],
-        };
-        return array_values(array_unique([...$codes, ...$more]));
-    }
-
-    /** The APCM code for a patient: by the chronic conditions managed, and whether they are a Qualified Medicare Beneficiary. */
-    public static function apcmCode(int $conditions, bool $qmb): string
-    {
-        $codes = self::data()['apcm'];
-        if ($conditions >= 2) {
-            return $qmb ? $codes['qmbTwoOrMore'] : $codes['twoOrMore'];
-        }
-        return $codes['oneOrNone'];
+        return array_values(array_unique($codes));
     }
 
     /** The CPT notice that goes wherever the module shows CPT numbers. */
     public static function cptNotice(): string
     {
-        return self::data()['terms'];
-    }
-
-    /**
-     * data/codes.json, read once.
-     *
-     * @return array<string, mixed>
-     */
-    private static function data(): array
-    {
-        static $data = null;
-        return $data ??= json_decode((string)file_get_contents(dirname(__DIR__, 2) . '/data/codes.json'), true, 512, JSON_THROW_ON_ERROR);
+        return Schedule::bundled()['terms'];
     }
 
     /**
@@ -171,13 +120,18 @@ final class Service
      *    by the billing practitioner (the initiating visit "establishes the patient's
      *    relationship with the billing practitioner and makes sure the billing practitioner
      *    assesses the patient before starting BHI services", MLN909432, January 2026);
-     *  - PCM: as CCM.
+     *  - PCM: as CCM;
+     *  - RPM: 3 years, as an established patient (see above); RTM: none in 2026.
      *
-     * @return array{years: int, byPractitioner: bool}
+     * The years are by the calendar year the enrollment starts in (Schedule::lookBack): null
+     * when no initiating visit is needed, 0 when every enrollment needs its own. $allowProposed
+     * reads a proposed year too: only tests and the final-rule check do.
+     *
+     * @return array{years: ?int, byPractitioner: bool}
      */
-    public static function initiatingLookBack(string $service): array
+    public static function initiatingLookBack(string $service, int $startYear, bool $allowProposed = false): array
     {
-        return ['years' => $service === self::APCM ? 3 : 1, 'byPractitioner' => true];
+        return ['years' => Schedule::forYear($startYear, $allowProposed)->lookBack($service), 'byPractitioner' => true];
     }
 
     /** The fewest conditions a service needs. */
@@ -186,6 +140,7 @@ final class Service
         return match ($service) {
             self::CCM => 2,
             self::PCM, self::BHI, self::COCM => 1,
+            // APCM's code counts the conditions; CMS sets no minimum for RPM or RTM, which may be for an acute condition.
             default => 0,
         };
     }

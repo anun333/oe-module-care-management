@@ -25,6 +25,7 @@ use OpenEMR\Core\Header;
 use OpenHealthcare\CareManagement\Bootstrap;
 use OpenHealthcare\CareManagement\Domain\BillingCheck;
 use OpenHealthcare\CareManagement\Domain\Month;
+use OpenHealthcare\CareManagement\Domain\Schedule;
 use OpenHealthcare\CareManagement\Domain\Service;
 use OpenHealthcare\CareManagement\Guide;
 use OpenHealthcare\CareManagement\Labels;
@@ -64,6 +65,9 @@ $others = static fn(array $s): string => implode('; ', array_map(
     array_keys(array_filter(array_diff_key($s['routes'], [Service::STAFF => 1, Service::PRACTITIONER => 1])))));
 EventAuditLogger::getInstance()->newEvent('patient-record-select', (string)$session->get('authUser'), (string)$session->get('authProvider'), 1,
     'Care Management month list ' . $month->key() . ($csv ? ' (CSV)' : '') . ', pids: ' . implode(',', $pids));
+// What blocks a line, in words: some depend on the service and its look-back.
+$blocked = static fn(array $l): string => implode('; ', array_map(static fn(string $b): string => Labels::blocker($b, $l['e']->service, $l['s']['lookBack']), $l['s']['blockers']));
+$schedule = Schedule::forMonth($month);
 $name = static fn(int $pid): string => isset($patients[$pid]) ? trim($patients[$pid]['lname'] . ', ' . $patients[$pid]['fname'], ', ') : '#' . $pid;
 
 if ($csv) {
@@ -80,7 +84,7 @@ if ($csv) {
         $s = $l['s'];
         fputcsv($out, [$name($e->pid), (string)($patients[$e->pid]['pubpid'] ?? ''), strtoupper($e->service), $practitioners[$e->practitionerId] ?? '',
             $s['staff'], $s['practitioner'], Labels::codes($s['routes'][Service::STAFF] ?? []), Labels::codes($s['routes'][Service::PRACTITIONER] ?? []),
-            $others($s), $l['billable'] ? 'yes' : 'no', implode('; ', array_map(Labels::blocker(...), $s['blockers'])),
+            $others($s), $l['billable'] ? 'yes' : 'no', $blocked($l),
             $units($l['billed']), trim(Labels::billing($l['check']['status']) . ($l['check']['beyond'] !== [] ? ': ' . $units($l['check']['beyond']) : ''))], ',', '"', '');
     }
     fclose($out);
@@ -99,7 +103,10 @@ $moduleUrl = OpenEmr::webRoot() . Bootstrap::MODULE_INSTALLATION_PATH . '/public
 <div class="container-fluid py-3">
     <h1 class="h4"><?php echo xlt('Care Management'); ?>: <?php echo text($month->key()); ?></h1>
     <p class="small mb-2"><a href="<?php echo attr(Guide::url()); ?>" target="_blank" rel="noopener"><?php echo xlt('Help'); ?><span class="sr-only"> <?php echo xlt('(opens in a new window)'); ?></span></a></p>
-    <p class="small text-muted"><?php echo xlt('Minutes are counted per calendar month and never carry over. Each add-on needs its full time, and CoCM its full minutes. APCM and its add-ons have no time requirement. Health centers bill these codes themselves, paid outside the PPS rate. This list bills nothing: add the codes on a fee sheet.'); ?>
+    <?php if (!$schedule->covers($month)) { ?>
+        <div class="alert alert-warning py-2 small" data-schedule="<?php echo attr((string)$schedule->year); ?>"><?php echo text(sprintf(xl('This version of the module does not have the %1$s fee schedule yet, so this month is counted with the %2$s codes and minutes. Update the module.'), $month->first()->format('Y'), $schedule->year)); ?></div>
+    <?php } ?>
+    <p class="small text-muted"><?php echo xlt('Minutes are counted per calendar month and never carry over. Each add-on needs its full time, and CoCM its full minutes. APCM and its add-ons have no time requirement. RPM and RTM device codes go with 30-day periods, in the month each ends. Health centers bill these codes themselves, paid outside the PPS rate. This list bills nothing: add the codes on a fee sheet.'); ?>
         <?php if ($seesBilling) { ?><?php echo xlt('Billed compares the time logged with the care management codes on fee sheets for the encounters of this month.'); ?><?php } ?></p>
     <form method="get" class="form-inline mb-3">
         <label class="mr-2" for="month"><?php echo xlt('Month'); ?></label>
@@ -128,7 +135,7 @@ $moduleUrl = OpenEmr::webRoot() . Bootstrap::MODULE_INSTALLATION_PATH . '/public
                     <?php if (($s['routes'][Service::PRACTITIONER] ?? []) !== []) { ?><br><span class="small"><?php echo xlt('or'); ?> <?php echo text(Labels::codes($s['routes'][Service::PRACTITIONER])); ?></span><?php } ?>
                     <?php if ($others($s) !== '') { ?><br><span class="small"><?php echo xlt('or'); ?> <?php echo text($others($s)); ?></span><?php } ?>
                 </td>
-                <td class="small text-danger"><?php echo text(implode('; ', array_map(Labels::blocker(...), $s['blockers']))); ?></td>
+                <td class="small text-danger"><?php echo text($blocked($l)); ?><?php if ($s['notes'] !== []) { ?><?php echo $s['blockers'] !== [] ? '; ' : ''; ?><?php echo text(implode('; ', array_map(Labels::note(...), $s['notes']))); ?><?php } ?></td>
                 <?php if ($seesBilling) {
                     $status = $l['check']['status'];
                     $tone = match ($status) {
