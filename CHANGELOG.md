@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.9 (unreleased)
+## 0.3.9 (2026-10-26)
 
 - **Changed: only a visit with the billing practitioner spares an initiating visit, for every service.** MLN909188 asks for one for "patients who you haven't seen within the previous 1 year", addressed to the billing practitioner, and MLN909432 says the BHI initiating visit "establishes the patient's relationship with the billing practitioner". CCM, PCM, BHI and CoCM counted a visit with anyone; they now count only the billing practitioner's, as APCM has since 0.3.8. This is worked out each time a page is read, so a month of an enrollment saved earlier, whose patient was seen only by someone else, now shows **No initiating visit recorded** until one is entered.
 - **The consent method shows in the user's language** (Verbal or Written) instead of the stored word.
