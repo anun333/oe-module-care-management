@@ -44,6 +44,8 @@ CMS asks for another initiating visit after a year of PCM. From the thirteenth m
 
 Time is counted per calendar month and never carries over. Use **Month** and **Show** to look at another month.
 
+For CoCM, the page shows the month's clinical staff minutes and the minute the month is billable from, such as "41 min; billable from 36". CMS says CPT's time rules apply to CoCM, so a code counts once more than half its time is done: in the first month of an episode (no CoCM time in the 6 months before) 99492 from 36 of its 70 minutes, in a later month 99493 from 31 of 60, each 99494 from 16 minutes past the full 70 or 60, and G2214 from 16 minutes when 36 or 31 isn't reached. The line under it says which month of the episode it is.
+
 ### Enter remote monitoring's days of data (RPM and RTM)
 
 *Where:* the patient's Care Management page, under the RPM or RTM service.

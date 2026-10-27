@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.1 (unreleased)
+
+- **The Staff Worklist tab is built on openhealthcare-common's shared contract** (1.5.0), so it loads, and is tested, without the Worklist's classes. Staff see the same "Care management, not billed" tab with the same rows, on any Worklist from 0.8.0. The bootstrap also registers the library's contracts under their own prefix, so they load where a module copied in by hand carries an older copy that registered first; if no copy with the contracts is there at all, the tab is left out rather than stop the page.
+- Requires openhealthcare-common 1.5.0.
+- **The staff guide** explains CoCM's "billable from" minutes (CPT's time rules, which CMS says apply).
+- **Install note:** restart the container after adding, upgrading or removing a module copied in by hand (OpenEMR's official 8.0.0 to 8.5.0 images keep class locations, and classes not found, in APCu).
+
 ## 0.4.0 (2026-10-26)
 
 Released before the CY 2027 physician fee schedule final rule, which wasn't published on 2026-10-26 (the proposed rule is FR 2026-14327, 91 FR 43842). Everything here stands on 2026's rules; when the final rule is out, its 2027 entry is checked against it in a later release.

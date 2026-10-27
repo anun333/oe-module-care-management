@@ -4,8 +4,8 @@
  * The Staff Worklist's "Care management, not billed" tab, which this module adds through the
  * worklist's staff_worklist.collect_sources event: an enrollment whose month, in the last three
  * completed months, met a code with nothing billed for its service, read as the month list reads
- * it (MonthLines). It only reads; the button opens the month list. The file is loaded only when
- * the Staff Worklist asks, so its classes are there.
+ * it (MonthLines). It only reads; the button opens the month list. It is built on openhealthcare-common's
+ * Worklist contract (1.5.0), so it loads, and is tested, without the Worklist's classes.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
@@ -26,12 +26,12 @@ use OpenHealthcare\CareManagement\Domain\UnbilledMonths;
 use OpenHealthcare\CareManagement\Labels;
 use OpenHealthcare\CareManagement\Repository\EnrollmentRepository;
 use OpenHealthcare\CareManagement\Repository\MonthLines;
-use OpenHealthcare\StaffWorklist\Model\ItemKey;
-use OpenHealthcare\StaffWorklist\Model\PatientRef;
-use OpenHealthcare\StaffWorklist\Model\WorkItem;
-use OpenHealthcare\StaffWorklist\Source\WorkSourceInterface;
+use OpenHealthcare\Common\Contract\Worklist\ItemKey;
+use OpenHealthcare\Common\Contract\Worklist\PatientRef;
+use OpenHealthcare\Common\Contract\Worklist\WorkItem;
+use OpenHealthcare\Common\Contract\Worklist\WorkSource;
 
-final class UnbilledSource implements WorkSourceInterface
+final class UnbilledSource implements WorkSource
 {
     /** Its rows' keys: "caremgmt:<pid>:<enrollment id><YYYYMM>". */
     public const ID = 'caremgmt';
