@@ -9,7 +9,7 @@ Monthly care management for OpenEMR: enroll a patient with the consent CMS requi
 
 It bills nothing: staff add the codes on a fee sheet, as for any other service. From 0.3.0 it checks what they billed against the time logged.
 
-> **Status: 0.4.2, a pre-release. This module needs OpenEMR 8.1.0 or later and PHP 8.2 or later; on an older OpenEMR it stays switched off.** Tested on OpenEMR 8.4.1 with synthetic data only. The codes and rules are as read from CMS's documents on 2026-10-18; check them with your billing staff and payer before billing.
+> **Status: 0.4.3, a pre-release. This module needs OpenEMR 8.1.0 or later and PHP 8.2 or later; on an older OpenEMR it stays switched off.** Tested on OpenEMR 8.4.1 with synthetic data only. The codes and rules are as read from CMS's documents on 2026-10-18; check them with your billing staff and payer before billing.
 
 What installing it changes in your database, what it reads and writes, and what it hooks into are listed in [FOOTPRINT.md](FOOTPRINT.md), generated from the source.
 
