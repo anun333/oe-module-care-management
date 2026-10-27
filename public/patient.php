@@ -250,6 +250,10 @@ $consentFields = static function (string $k) {
     <title><?php echo xlt('Care Management'); ?></title>
     <?php Header::setupHeader(); ?>
     <?php echo \OpenHealthcare\CareManagement\Contrast::style(); ?>
+    <style>/* WCAG 2.2, 2.5.8 Target Size: the time row's two checkboxes and the sections that open are 24 pixels or more. */
+        .cm-check { padding-left: 2rem; }
+        .cm-check .form-check-input { width: 1.5rem; height: 1.5rem; margin-left: -2rem; margin-top: 0; }
+        details > summary { padding: .3rem 0; }</style>
 </head>
 <body class="body_top">
 <div class="container-fluid py-3">
@@ -362,11 +366,11 @@ $consentFields = static function (string $k) {
                         <div class="form-group col-md-1"><label class="small" for="mi<?php echo attr((string)$e->id); ?>"><?php echo xlt('Minutes'); ?></label><input type="number" min="1" max="240" class="form-control form-control-sm" id="mi<?php echo attr((string)$e->id); ?>" name="minutes"></div>
                         <div class="form-group col-md-5"><label class="small" for="wd<?php echo attr((string)$e->id); ?>"><?php echo xlt('What was done'); ?></label><input class="form-control form-control-sm" id="wd<?php echo attr((string)$e->id); ?>" name="activity" maxlength="1000"></div>
                         <?php if ($remote) { ?>
-                            <div class="form-group col-md-2 form-check"><input class="form-check-input" type="checkbox" name="interactive" value="1" id="lc<?php echo attr((string)$e->id); ?>">
+                            <div class="form-group col-md-2 form-check cm-check"><input class="form-check-input" type="checkbox" name="interactive" value="1" id="lc<?php echo attr((string)$e->id); ?>">
                                 <label class="form-check-label small" for="lc<?php echo attr((string)$e->id); ?>"><?php echo xlt('Included a live conversation with the patient or caregiver'); ?></label></div>
                         <?php } ?>
                         <?php if ($userId === $e->practitionerId && !in_array($e->service, [Service::BHI, Service::COCM], true)) { ?>
-                            <div class="form-group col-md-2 form-check"><input class="form-check-input" type="checkbox" name="as_practitioner" value="1" id="ap<?php echo attr((string)$e->id); ?>">
+                            <div class="form-group col-md-2 form-check cm-check"><input class="form-check-input" type="checkbox" name="as_practitioner" value="1" id="ap<?php echo attr((string)$e->id); ?>">
                                 <label class="form-check-label small" for="ap<?php echo attr((string)$e->id); ?>"><?php echo xlt('I did this myself'); ?></label></div>
                         <?php } ?>
                         <div class="form-group col-md-2"><button class="btn btn-sm btn-primary" type="submit"><?php echo xlt('Log time'); ?></button></div>

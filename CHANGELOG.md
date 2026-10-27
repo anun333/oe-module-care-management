@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.3 (unreleased)
+
+- **Easier to hit on a patient's page:** the time row's "Included a live conversation" and "I did this myself" boxes are now 24 pixels, and **Record consent or initiating visit** and **The patient stopped** open from a taller row; each was under 20 pixels and close to the next control (WCAG 2.2, 2.5.8 Target Size).
+
 ## 0.4.2 (2026-10-27)
 
 - **On OpenEMR older than 8.1.0, the module's pages say so instead of showing a blank page.** The module needs 8.1.0 or later and stays switched off below it, but a page opened from a bookmark or a typed address still ran and stopped with an empty HTTP 500. Each page now answers with a short page naming the version the module needs and the site's version (found installing every module on a fresh 7.0.2).
