@@ -14,8 +14,10 @@
  *  - Complex CCM, in a month the billing practitioner says they made moderate or high
  *    complexity decisions: the same time as 99490 meets 99487 at 60 and 99489 for each further
  *    full 30. It's a route of its own, billed instead of the others.
- *  - CoCM: the care manager's time meets 99492 at 70 in the first month of an episode, 99493
- *    at 60 in a later one, 99494 for each further full 30, or G2214 at 30 when neither is met.
+ *  - CoCM: the care manager's time, under CPT's time rules as CMS applies them (a unit counts
+ *    once more than half of it is done): 99492 from 36 minutes in the first month of an episode
+ *    (of 70), 99493 from 31 in a later one (of 60), 99494 for each further 30 from 16 past the
+ *    base code's full time, or G2214 from 16 (of 30) when neither base code is met.
  *  - APCM: its code each month, with no time; for a CoCM or BHI enrollment with time logged
  *    and the same practitioner billing APCM, the APCM add-on (G0568, G0569 or G0570).
  *  - RPM and RTM: one list of codes, billed together: set-up once an episode, with the first
@@ -135,18 +137,21 @@ final class MonthRules
             // The care manager's time; CMS doesn't say the practitioner's own counts.
             $time = $minutes[Service::STAFF];
             $base = $schedule->cocmMonth($cocmEarlierInEpisode);
+            $addOn = $schedule->cocmAddOn();
             $codes = [];
-            if ($time >= $base['first']) {
+            if ($time >= $base['from']) {
                 $codes[] = ['code' => $base['base'], 'units' => 1];
-                $units = intdiv($time - $base['first'], $schedule->cocmAddOn()['each']);
+                // Each add-on unit starts once the base code's full time is done.
+                $beyond = $time - $base['first'];
+                $units = $beyond >= $addOn['from'] ? intdiv($beyond - $addOn['from'], $addOn['each']) + 1 : 0;
                 if ($units > 0) {
-                    $codes[] = ['code' => $schedule->cocmAddOn()['code'], 'units' => $units];
+                    $codes[] = ['code' => $addOn['code'], 'units' => $units];
                 }
-            } elseif ($time >= $schedule->cocmShort()['first']) {
+            } elseif ($time >= $schedule->cocmShort()['from']) {
                 $codes[] = ['code' => $schedule->cocmShort()['code'], 'units' => 1];
             }
             $routes[Service::STAFF] = $codes;
-            $next[Service::STAFF] = max(0, $base['first'] - $time);
+            $next[Service::STAFF] = max(0, $base['from'] - $time);
             $nextCode[Service::STAFF] = $base['base'];
         }
         $notes = [];
@@ -217,7 +222,7 @@ final class MonthRules
             'nextCode' => $nextCode,
             'threshold' => match (true) {
                 $e->service === Service::APCM => null,
-                $e->service === Service::COCM => $schedule->cocmMonth($cocmEarlierInEpisode)['first'],
+                $e->service === Service::COCM => $schedule->cocmMonth($cocmEarlierInEpisode)['from'],
                 in_array($e->service, Service::REMOTE, true) => $schedule->remote($e->service)['management']['short']['first'],
                 default => $schedule->routes($e->service)[Service::STAFF]['first'],
             },

@@ -112,19 +112,24 @@ final class Schedule
         return $this->values['complexCcm'];
     }
 
-    /** @return array{base: string, first: int} */
+    /**
+     * CoCM's base code for the month of the episode: first = the minutes CMS gives it, from = the
+     * minutes it is billable from under CPT's time rules (more than half; see codes.json's sources).
+     *
+     * @return array{base: string, first: int, from: int}
+     */
     public function cocmMonth(bool $laterInEpisode): array
     {
         return $this->values['cocm'][$laterInEpisode ? 'laterMonth' : 'firstMonth'];
     }
 
-    /** @return array{code: string, each: int} */
+    /** @return array{code: string, each: int, from: int} from: minutes past the base code's full time at which a unit starts */
     public function cocmAddOn(): array
     {
         return $this->values['cocm']['addOn'];
     }
 
-    /** @return array{code: string, first: int} */
+    /** @return array{code: string, first: int, from: int} */
     public function cocmShort(): array
     {
         return $this->values['cocm']['short'];

@@ -41,7 +41,7 @@ final class ScheduleTest extends TestCase
             self::assertSame($expected, $proposed->lookBack($service), $service);
         }
         self::assertSame($final->remote(Service::RPM), $proposed->remote(Service::RPM), 'nor any day or minute');
-        self::assertSame($final->cocmMonth(false), $proposed->cocmMonth(false), "CoCM's minutes stay (Seth's decision on lower floors is pending)");
+        self::assertSame($final->cocmMonth(false), $proposed->cocmMonth(false), "CoCM's minutes stay");
         self::assertSame($final->pcmRenewalMonths(), $proposed->pcmRenewalMonths());
     }
 
@@ -49,11 +49,11 @@ final class ScheduleTest extends TestCase
     {
         $data = Schedule::bundled();
         $data['years']['2027']['status'] = Schedule::FINAL;
-        $data['years']['2027']['changes']['cocm']['laterMonth']['first'] = 50;
+        $data['years']['2027']['changes']['cocm']['laterMonth']['from'] = 50;
         $s = Schedule::forYear(2027, false, $data);
         self::assertSame(2027, $s->year);
-        self::assertSame(['base' => '99493', 'first' => 50], $s->cocmMonth(true), 'its change');
-        self::assertSame(['base' => '99492', 'first' => 70], $s->cocmMonth(false), "the rest is 2026's");
+        self::assertSame(['base' => '99493', 'first' => 60, 'from' => 50], $s->cocmMonth(true), 'its change');
+        self::assertSame(['base' => '99492', 'first' => 70, 'from' => 36], $s->cocmMonth(false), "the rest is 2026's");
         self::assertSame(0, $s->lookBack(Service::RPM));
         self::assertSame(2027, Schedule::forYear(2031, false, $data)->year, 'a later year: the latest final one');
         self::assertSame(2026, Schedule::forYear(2026, false, $data)->year);

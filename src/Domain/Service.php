@@ -14,9 +14,11 @@
  *  - psychiatric collaborative care (CoCM): 99492 for the first 70 minutes of behavioral
  *    health care manager time in the first month of an episode, 99493 for the first 60 in a
  *    later month, 99494 for each additional 30, and G2214 for the first 30 when the other
- *    threshold isn't met (MLN909432). CMS says only "CPT time rules apply" and publishes no
- *    lower figures, so full minutes are used here. A new episode starts after 6 calendar
- *    months without CoCM (CY 2017 PFS rule, 81 FR 80241);
+ *    threshold isn't met (MLN909432). A new episode starts after 6 calendar months without
+ *    CoCM (CY 2017 PFS rule, 81 FR 80241). From 0.4.0 CoCM follows "CPT time rules", as
+ *    MLN909432 says (pages 7 and 13): a unit counts once more than half of it is done, so
+ *    99492 from 36 minutes, 99493 from 31, 99494 from 16 past the base code's full time and
+ *    G2214 from 16 (data/codes.json, with the quotes);
  *  - APCM: G0556 (one chronic condition or none), G0557 (two or more), G0558 (a Qualified
  *    Medicare Beneficiary with two or more), once a month, with no time requirement
  *    (CY 2025 PFS rule, 89 FR 97868-71), and in 2026 the add-ons G0568 (CoCM, first month),

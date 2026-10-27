@@ -90,12 +90,12 @@ As written in the source; whether they behave correctly for a given user is not 
 
 | part | files | lines |
 |---|---|---|
-| PHP logic (`src/`) | 20 | 2106 |
-| tests (`tests/`, `phpunit.xml.dist`) | 12 | 955 |
-| pages (`public/`) | 2 | 604 |
+| PHP logic (`src/`) | 20 | 2118 |
+| tests (`tests/`, `phpunit.xml.dist`) | 12 | 964 |
+| pages (`public/`) | 2 | 608 |
 | module wiring | 5 | 174 |
 | install SQL (`sql/`) | 3 | 143 |
-| data (`data/`, read at runtime) | 1 | 135 |
+| data (`data/`, read at runtime) | 1 | 142 |
 | other | 1 | 36 |
 | tools (`tools/`) | 1 | 31 |
 

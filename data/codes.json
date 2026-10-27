@@ -20,10 +20,17 @@
    },
    "complexCcm": {"base": "99487", "first": 60, "addOn": "99489", "each": 30},
    "cocm": {
-    "firstMonth": {"base": "99492", "first": 70},
-    "laterMonth": {"base": "99493", "first": 60},
-    "addOn": {"code": "99494", "each": 30},
-    "short": {"code": "G2214", "first": 30}
+    "firstMonth": {"base": "99492", "first": 70, "from": 36},
+    "laterMonth": {"base": "99493", "first": 60, "from": 31},
+    "addOn": {"code": "99494", "each": 30, "from": 16},
+    "short": {"code": "G2214", "first": 30, "from": 16},
+    "sources": {
+     "rule": "\"CPT time rules apply.\" (MLN909432, January 2026, page 7) and \"Note: CPT time rules apply to general BHI and CoCM services.\" (page 13); for G2214, \"CPT time rules would apply, consistent with the guidance in the CPT codebook for CPT codes 99492-99494\" (CY 2021 PFS final rule, 85 FR 84548). CMS names \"the general CPT rule regarding the midpoint for certain timed services\" (Medicare Claims Processing Manual, chapter 12, 30.6.1.B): a unit of time counts once more than half of it is done. The \"from\" values apply that rule to CMS's times; CMS's documents don't print them.",
+     "99492": "\"70 minutes initial calendar month\" (MLN909432, page 13, BHI Coding Summary): from 36, past the midpoint of 70.",
+     "99493": "\"60 minutes per subsequent calendar month\" (MLN909432, page 13): from 31, past the midpoint of 60.",
+     "99494": "\"Each additional 30 minutes per calendar month\" (MLN909432, page 13), used \"as an add-on code with base CPT codes 99492 and 99493\" (page 8): each unit from 16 minutes past the base code's full time, so the first at 86 minutes in a first month and 76 in a later one.",
+     "G2214": "\"30 minutes of behavioral health care manager time per calendar month\" (MLN909432, page 13; page 8: \"covers the first 30 minutes in a month\", for when \"you don't meet the number of minutes needed to bill using the current coding\"): from 16, when 99492's 36 or 99493's 31 isn't met."
+    }
    },
    "apcm": {"oneOrNone": "G0556", "twoOrMore": "G0557", "qmbTwoOrMore": "G0558"},
    "apcmAddOns": {"cocmFirstMonth": "G0568", "cocmLaterMonth": "G0569", "bhi": "G0570"},

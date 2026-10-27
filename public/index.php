@@ -106,7 +106,7 @@ $moduleUrl = OpenEmr::webRoot() . Bootstrap::MODULE_INSTALLATION_PATH . '/public
     <?php if (!$schedule->covers($month)) { ?>
         <div class="alert alert-warning py-2 small" data-schedule="<?php echo attr((string)$schedule->year); ?>"><?php echo text(sprintf(xl('This version of the module does not have the %1$s fee schedule yet, so this month is counted with the %2$s codes and minutes. Update the module.'), $month->first()->format('Y'), $schedule->year)); ?></div>
     <?php } ?>
-    <p class="small text-muted"><?php echo xlt('Minutes are counted per calendar month and never carry over. Each add-on needs its full time, and CoCM its full minutes. APCM and its add-ons have no time requirement. RPM and RTM device codes go with 30-day periods, in the month each ends. Health centers bill these codes themselves, paid outside the PPS rate. This list bills nothing: add the codes on a fee sheet.'); ?>
+    <p class="small text-muted"><?php echo xlt('Minutes are counted per calendar month and never carry over. Each add-on needs its full time, except that CoCM follows CPT time rules, as CMS says: a code counts once more than half its time is done. APCM and its add-ons have no time requirement. RPM and RTM device codes go with 30-day periods, in the month each ends. Health centers bill these codes themselves, paid outside the PPS rate. This list bills nothing: add the codes on a fee sheet.'); ?>
         <?php if ($seesBilling) { ?><?php echo xlt('Billed compares the time logged with the care management codes on fee sheets for the encounters of this month.'); ?><?php } ?></p>
     <form method="get" class="form-inline mb-3">
         <label class="mr-2" for="month"><?php echo xlt('Month'); ?></label>

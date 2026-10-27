@@ -326,9 +326,13 @@ $consentFields = static function (string $k) {
                     <?php if (count(array_filter($s['routes'])) > 1) { ?>
                         <p class="small text-muted mb-1"><?php echo xlt('These are alternatives: bill one of them for the month.'); ?></p>
                     <?php } ?>
-                    <?php if ($e->service === Service::COCM) { ?>
+                    <?php if ($e->service === Service::COCM) {
+                        $cocm = $schedule->cocmMonth($earlier[$e->id] ?? false); ?>
+                        <p class="small mb-1" data-cocm-minutes="<?php echo attr((string)$s['staff']); ?>" data-cocm-from="<?php echo attr((string)$cocm['from']); ?>">
+                            <?php echo text(sprintf(xl('%1$s min; billable from %2$s'), $s['staff'], $cocm['from'])); ?></p>
                         <p class="small text-muted mb-1"><?php echo $earlier[$e->id] ?? false ? xlt('A later month of the episode.') : xlt('The first month of an episode (no CoCM time in the 6 months before).'); ?>
-                            <?php echo xlt('Full minutes are used: CMS says only that CPT time rules apply and publishes no lower figures.'); ?></p>
+                            <?php echo text(sprintf(xl('CPT time rules apply, as CMS says: a code counts once more than half its time is done. %1$s from %2$s of %3$s minutes, each %4$s from %5$s minutes past the full %3$s, %6$s from %7$s.'),
+                                $cocm['base'], $cocm['from'], $cocm['first'], $schedule->cocmAddOn()['code'], $schedule->cocmAddOn()['from'], $schedule->cocmShort()['code'], $schedule->cocmShort()['from'])); ?></p>
                     <?php } ?>
                     <?php if ($e->service === Service::CCM) { ?>
                         <form method="post" class="small mb-1" data-complex="<?php echo ($complex[$e->id] ?? false) ? '1' : '0'; ?>">

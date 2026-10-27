@@ -81,8 +81,10 @@ final class ServiceTest extends TestCase
             }
         }
         $s = Schedule::forYear(2026);
-        self::assertSame(['base' => '99492', 'first' => 70], $s->cocmMonth(false));
-        self::assertSame(['base' => '99493', 'first' => 60], $s->cocmMonth(true));
+        self::assertSame(['base' => '99492', 'first' => 70, 'from' => 36], $s->cocmMonth(false), 'MLN909432 page 13, and CPT time rules: more than half');
+        self::assertSame(['base' => '99493', 'first' => 60, 'from' => 31], $s->cocmMonth(true));
+        self::assertSame(['code' => '99494', 'each' => 30, 'from' => 16], $s->cocmAddOn());
+        self::assertSame(['code' => 'G2214', 'first' => 30, 'from' => 16], $s->cocmShort());
         self::assertSame('G0570', $s->apcmAddOn(Service::BHI, true), "general BHI's add-on doesn't depend on an episode");
         self::assertSame('G0569', $s->apcmAddOn(Service::COCM, true));
         self::assertSame('G0568', $s->apcmAddOn(Service::COCM, false));

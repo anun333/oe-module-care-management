@@ -160,17 +160,24 @@ final class MonthRulesTest extends TestCase
             array_values(array_filter([self::entry(1, '2026-10-05', $minutes, Service::STAFF),
                 $practitioner > 0 ? self::entry(1, '2026-10-06', $practitioner, Service::PRACTITIONER) : null])),
             [], self::october(), false, $later)['routes'][Service::STAFF];
-        $this->assertSame([], $staff(29));
-        $this->assertSame([['code' => 'G2214', 'units' => 1]], $staff(30), 'the first 30 minutes when 99492 isn\'t met');
-        $this->assertSame([['code' => 'G2214', 'units' => 1]], $staff(69));
-        $this->assertSame([['code' => '99492', 'units' => 1]], $staff(70));
-        $this->assertSame([['code' => '99492', 'units' => 1], ['code' => '99494', 'units' => 1]], $staff(100));
-        $this->assertSame([['code' => 'G2214', 'units' => 1]], $staff(59, true));
-        $this->assertSame([['code' => '99493', 'units' => 1]], $staff(60, true), 'a later month of the episode');
-        $this->assertSame([['code' => '99493', 'units' => 1], ['code' => '99494', 'units' => 2]], $staff(120, true));
-        $this->assertSame([['code' => 'G2214', 'units' => 1]], $staff(40, false, 40), 'the practitioner\'s own time is not the care manager\'s');
-        $this->assertSame(70, MonthRules::summarize($e, [], [], self::october())['threshold']);
-        $this->assertSame(60, MonthRules::summarize($e, [], [], self::october(), false, true)['threshold']);
+        // CPT time rules, as MLN909432 says (pages 7 and 13): a code counts once more than half its time is done.
+        $this->assertSame([], $staff(15));
+        $this->assertSame([['code' => 'G2214', 'units' => 1]], $staff(16), 'G2214 from 16 of its 30 minutes');
+        $this->assertSame([['code' => 'G2214', 'units' => 1]], $staff(35), "99492 isn't met");
+        $this->assertSame([['code' => '99492', 'units' => 1]], $staff(36), '99492 from 36 of its 70');
+        $this->assertSame([['code' => '99492', 'units' => 1]], $staff(85));
+        $this->assertSame([['code' => '99492', 'units' => 1], ['code' => '99494', 'units' => 1]], $staff(86), '99494 from 16 past the full 70');
+        $this->assertSame([['code' => '99492', 'units' => 1], ['code' => '99494', 'units' => 1]], $staff(115));
+        $this->assertSame([['code' => '99492', 'units' => 1], ['code' => '99494', 'units' => 2]], $staff(116));
+        $this->assertSame([['code' => 'G2214', 'units' => 1]], $staff(30, true));
+        $this->assertSame([['code' => '99493', 'units' => 1]], $staff(31, true), 'a later month of the episode: 99493 from 31 of its 60');
+        $this->assertSame([['code' => '99493', 'units' => 1]], $staff(75, true));
+        $this->assertSame([['code' => '99493', 'units' => 1], ['code' => '99494', 'units' => 1]], $staff(76, true), '99494 from 16 past the full 60');
+        $this->assertSame([['code' => '99493', 'units' => 1], ['code' => '99494', 'units' => 2]], $staff(106, true));
+        $this->assertSame([['code' => 'G2214', 'units' => 1]], $staff(30, false, 40), 'the practitioner\'s own time is not the care manager\'s');
+        $this->assertSame(36, MonthRules::summarize($e, [], [], self::october())['threshold']);
+        $this->assertSame(31, MonthRules::summarize($e, [], [], self::october(), false, true)['threshold']);
+        $this->assertSame(5, MonthRules::summarize($e, [self::entry(1, '2026-10-05', 26, Service::STAFF)], [], self::october(), false, true)['next'][Service::STAFF]);
     }
 
     public function testApcmByConditionsAndQmbWithNoTime(): void
