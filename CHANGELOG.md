@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.1 (unreleased)
+## 0.4.1 (2026-10-26)
 
 - **The Staff Worklist tab is built on openhealthcare-common's shared contract** (1.5.0), so it loads, and is tested, without the Worklist's classes. Staff see the same "Care management, not billed" tab with the same rows, on any Worklist from 0.8.0. The bootstrap also registers the library's contracts under their own prefix, so they load where a module copied in by hand carries an older copy that registered first; if no copy with the contracts is there at all, the tab is left out rather than stop the page.
 - Requires openhealthcare-common 1.5.0.
