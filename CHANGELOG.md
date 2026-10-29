@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.5.0 (unreleased)
+## 0.5.0 (2026-10-29)
 
 - **The consent form is a link away.** With Clinic Forms installed and on, a patient's page links to its care management consent, ticked and filled for the patient whose chart is open, from **Enroll** and from **Record consent or initiating visit**. Staff print it in Clinic Forms and record the consent here as before. Without Clinic Forms the link isn't shown.
 
