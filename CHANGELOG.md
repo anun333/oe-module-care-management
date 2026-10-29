@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.0 (unreleased)
+
+- **The consent form is a link away.** With Clinic Forms installed and on, a patient's page links to its care management consent, ticked and filled for the patient whose chart is open, from **Enroll** and from **Record consent or initiating visit**. Staff print it in Clinic Forms and record the consent here as before. Without Clinic Forms the link isn't shown.
+
 ## 0.4.3 (2026-10-27)
 
 - **Easier to hit on a patient's page:** the time row's "Included a live conversation" and "I did this myself" boxes are now 24 pixels, and **Record consent or initiating visit** and **The patient stopped** open from a taller row; each was under 20 pixels and close to the next control (WCAG 2.2, 2.5.8 Target Size).

@@ -225,6 +225,9 @@ $earlier = $times->hadTimeBefore($ids, $month);
 $periods = $devices->forPatients([$pid]);
 $schedule = Schedule::forMonth($month);
 $moduleUrl = OpenEmr::webRoot() . Bootstrap::MODULE_INSTALLATION_PATH . '/public/';
+// With Clinic Forms on, its care management consent, ticked and filled for the patient whose chart is open; staff print it there.
+$consentForm = QueryUtils::fetchRecords("SELECT 1 FROM `modules` WHERE `mod_directory` = 'oe-module-clinic-forms' AND `mod_active` = 1 LIMIT 1") === [] ? null
+    : OpenEmr::webRoot() . '/interface/modules/custom_modules/oe-module-clinic-forms/public/index.php?select=doc:care-management-consent&fill=1';
 $token = CsrfUtils::collectCsrfToken(session: $session);
 $consentHow = ['verbal' => xl('Verbal'), 'written' => xl('Written')];
 $consentFields = static function (string $k) {
@@ -383,6 +386,7 @@ $consentFields = static function (string $k) {
                         <form method="post" class="mt-2"><input type="hidden" name="csrf_token_form" value="<?php echo attr($token); ?>">
                             <input type="hidden" name="action" value="consent"><input type="hidden" name="enrollment" value="<?php echo attr((string)$e->id); ?>">
                             <p class="small text-muted mb-1"><?php echo xlt('To record only an initiating visit, leave the consent date empty.'); ?></p>
+                            <?php if ($consentForm !== null) { ?><p class="small mb-1"><a href="<?php echo attr($consentForm); ?>"><?php echo xlt('Print the consent form (Clinic Forms)'); ?></a></p><?php } ?>
                             <?php $consentFields('e' . $e->id); ?><button class="btn btn-sm btn-outline-primary" type="submit"><?php echo xlt('Save'); ?></button></form></details>
                 <?php } ?>
                 <?php if ($e->stoppedOn === null) { ?>
@@ -421,6 +425,7 @@ $consentFields = static function (string $k) {
     </table>
 
     <h2 class="h5"><?php echo xlt('Enroll'); ?></h2>
+    <?php if ($consentForm !== null) { ?><p class="small"><a href="<?php echo attr($consentForm); ?>"><?php echo xlt('Print the consent form (Clinic Forms)'); ?></a></p><?php } ?>
     <form method="post">
         <input type="hidden" name="csrf_token_form" value="<?php echo attr($token); ?>"><input type="hidden" name="action" value="enroll">
         <div class="form-row">
